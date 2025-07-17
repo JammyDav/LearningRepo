@@ -45,7 +45,9 @@
                         button.textContent = 'ENTER VR';
                         currentSession = null;
                         // Reset simulation state when exiting VR
-                        resetSimulation();
+                        if (typeof resetSimulation === 'function') {
+                            resetSimulation();
+                        }
                     }
                     
                     button.style.display = '';
@@ -66,7 +68,8 @@
                     button.onclick = () => {
                         if (currentSession === null) {
                             console.log("Requesting WebXR session...");
-                            const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] };
+                            // FIX: Removed 'layers' from optionalFeatures as it can cause setup issues.
+                            const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] };
                             navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch(err => {
                                 console.error("Failed to request WebXR session:", err);
                                 alert("Could not start VR session. Please ensure your device supports WebXR and it is enabled.");
@@ -77,10 +80,6 @@
                         }
                     };
                 }
-                function disableButton() { /* ... unchanged ... */ }
-                if ('xr' in navigator) { /* ... unchanged ... */ } else { /* ... unchanged ... */ }
-
-                // --- Unchanged parts of VRButton ---
                 function disableButton() {
                     button.style.display = '';
                     button.style.cursor = 'auto';
@@ -191,15 +190,12 @@
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
-            
-            // Tare button
             const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
             const tareButtonMat = new THREE.MeshStandardMaterial({ color: 'red' });
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
             tareButton.name = 'tareButton';
             tareButton.position.set(0.1, 0.055, 0.08);
             group.add(tareButton);
-
             balance = group;
             balance.position.set(balancePos.x, balancePos.y - 0.2, balancePos.z);
             scene.add(balance);
@@ -265,15 +261,13 @@
             vrBalanceDisplay = createTextPanel(256, 128);
             vrBalanceDisplay.position.set(0, 0.15, 0);
             balance.add(vrBalanceDisplay);
-
-            // Reset Button
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
             const resetButtonMat = new THREE.MeshStandardMaterial({ color: '#dc2626' });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
             resetButton.name = 'resetButton';
             resetButton.position.set(0, 1.2, -1.8);
             const resetButtonText = createTextPanel(256, 128);
-            updateTextPanel(resetButtonText, ["", "RESET"]);
+            updateTextPanel(resetButtonText, ["RESET"]);
             resetButtonText.position.z = 0.011;
             resetButton.add(resetButtonText);
             scene.add(resetButton);
@@ -340,11 +334,15 @@
 
         function onSqueezeStart(event) {
             const controller = event.target;
+            // Prevent grabbing if an object is already held
+            if (grabbedObject) return;
+
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
             let closestObj = null;
             let minDistance = 0.1;
             grabbableObjects.forEach(obj => {
-                if (!obj.parent.isGroup) { // Can't grab an object that's already held
+                // FIX: Check if the object's parent is the scene, meaning it's not already held.
+                if (obj.parent === scene) {
                     const objPos = obj.getWorldPosition(new THREE.Vector3());
                     const distance = controllerPos.distanceTo(objPos);
                     if (distance < minDistance) {
@@ -354,6 +352,7 @@
                 }
             });
             if (closestObj) {
+                console.log("Grabbing:", closestObj.name);
                 controller.attach(closestObj);
                 grabbedObject = { object: closestObj, controller };
                 if (closestObj.name === 'pipette' && gameState === 'BALANCE_TARED') {
@@ -364,6 +363,7 @@
 
         function onSqueezeEnd(event) {
             if (grabbedObject) {
+                console.log("Releasing:", grabbedObject.object.name);
                 const { object } = grabbedObject;
                 const worldPos = object.getWorldPosition(new THREE.Vector3());
                 const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
@@ -432,28 +432,30 @@
 
         function resetSimulation() {
             console.log("Resetting simulation...");
-            // Detach any grabbed object
+            // FIX: Safely detach any grabbed object before resetting.
             if (grabbedObject) {
-                onSqueezeEnd();
+                const { object, controller } = grabbedObject;
+                const worldPos = object.getWorldPosition(new THREE.Vector3());
+                const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
+                scene.attach(object);
+                object.position.copy(worldPos);
+                object.quaternion.copy(worldQuat);
+                grabbedObject = null;
             }
 
-            // Reset object positions
             weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y - 0.2, weighBoatStartPos.z);
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
             weighBoat.getObjectByName('dispensedWater').visible = false;
-
-            // Reset state variables
             measurements = [];
             balanceReading = 0.0;
             isPipetteFull = false;
-
             setGameState('START');
         }
 
         function updateVRUI() {
             let instructions = ["Lab Procedure"];
             switch(gameState) {
-                case 'START': instructions.push("Grab the weigh boat."); break;
+                case 'START': instructions.push("Grab the weigh boat (use grip button)."); break;
                 case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at red TARE button & trigger."); break;
                 case 'BALANCE_TARED': instructions.push("Grab the micropipette."); break;
                 case 'PIPETTE_HELD': instructions.push("Move pipette to beaker, press trigger."); break;
@@ -499,7 +501,6 @@
             const intersects = raycaster.intersectObjects([tareButton, resetButton]);
             
             if (controllerPointingAt && (!intersects.length || intersects[0].object !== controllerPointingAt)) {
-                 // Reset color if no longer pointing or pointing at something else
                  if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set('red');
                  if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set('#dc2626');
                  controllerPointingAt = null;
