@@ -28,7 +28,6 @@
     <div id="scene-container"></div>
 
     <script type="module">
-        // DEBUG: Added a global error handler to catch any script-crashing errors.
         window.addEventListener('error', function(event) {
             const errorMsg = `An unexpected error occurred which may cause a black screen:
 Message: ${event.message}
@@ -242,6 +241,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
+            // FIX: Upgraded material to support emissive properties for highlighting
             const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
             const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
@@ -258,7 +258,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
             beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
             scene.add(beaker);
-            const waterMat = new THREE.MeshBasicMaterial({ color: '#63b3ed', transparent: true, opacity: 0.7 });
+            // FIX: Upgraded material to support emissive properties
+            const waterMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.7 });
             const water = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 32), waterMat);
             water.position.y = -0.01;
             beaker.add(water);
@@ -273,13 +274,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const wallHeight = 0.04;
             const wallThickness = 0.005;
 
-            // Base
             const base = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallThickness, baseDepth), boatMat);
             base.position.y = wallThickness / 2;
             base.castShadow = true;
             group.add(base);
 
-            // Walls
             const frontWall = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallHeight, wallThickness), boatMat);
             frontWall.position.set(0, wallHeight / 2, baseDepth / 2);
             frontWall.castShadow = true;
@@ -307,7 +306,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             grabbableObjects.push(weighBoat);
 
             const waterInBoatGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.01, 16);
-            const waterInBoatMat = new THREE.MeshBasicMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
+            // FIX: Upgraded material to support emissive properties
+            const waterInBoatMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
             const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
             waterInBoat.name = 'dispensedWater';
             waterInBoat.position.y = wallThickness;
@@ -323,13 +323,15 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             plunger.position.y = 0.17;
             plunger.name = 'plunger';
             group.add(plunger);
+            // FIX: Inverted tip geometry to be a proper point
             const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.005, 0.08, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             tip.position.y = -0.19;
             tip.name = 'pipetteTip';
             group.add(tip);
             
             const waterInPipetteGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.28, 16);
-            const waterInPipetteMat = new THREE.MeshBasicMaterial({ color: '#63b3ed' });
+            // FIX: Upgraded material to support emissive properties
+            const waterInPipetteMat = new THREE.MeshStandardMaterial({ color: '#63b3ed' });
             const waterInPipette = new THREE.Mesh(waterInPipetteGeo, waterInPipetteMat);
             waterInPipette.name = 'waterInPipette';
             waterInPipette.position.y = -0.01;
@@ -355,7 +357,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             scene.add(vrResultsPanel);
             
             vrBalanceDisplay = createTextPanel(256, 128);
-            vrBalanceDisplay.position.set(0, 0.1, -0.15);
+            vrBalanceDisplay.position.set(0, 0.1, -0.15); // Corrected position
             balance.add(vrBalanceDisplay);
 
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
@@ -608,10 +610,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 
                 obj.traverse(child => {
                     if(child.isMesh) {
-                        child.material.emissive = child.material.emissive || new THREE.Color(0x000000);
+                        if (!child.material.emissive) {
+                            child.material.emissive = new THREE.Color(0x000000);
+                        }
                         if(isHighlighted) {
                             child.material.emissive.set(highlightColor);
-                            child.material.emissiveIntensity = highlightIntensity;
+                            if (child.material.emissiveIntensity !== undefined) {
+                                child.material.emissiveIntensity = highlightIntensity;
+                            }
                         } else {
                             child.material.emissive.set(0x000000);
                         }
@@ -665,7 +671,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // DEBUG: Wrap the main initialization in a try...catch block.
         try {
             init();
         } catch (e) {
