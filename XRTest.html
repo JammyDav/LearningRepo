@@ -127,7 +127,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         // --- SCENE & PHYSICS SETUP ---
         let scene, camera, renderer, controllers = [], orbitControls;
-        let world, physicsObjects = []; // PHYSICS: World and objects array
+        let world, physicsObjects = [];
         let bench, balance, beaker, weighBoat, pipette, tareButton, resetButton;
         let vrInstructionPanel, vrResultsPanel, vrBalanceDisplay;
 
@@ -140,9 +140,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_DARK_GREY = '#435254';
         const CBRE_LIGHT_GREY = '#CAD1D3';
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
-        const METALLIC_SILVER = '#E5E7EB'; // VISUAL: Color for balance plate
+        const METALLIC_SILVER = '#E5E7EB';
 
-        const benchPos = { x: 0, y: 0.4, z: -0.8 };
+        // FIX: Raised bench height back up
+        const benchPos = { x: 0, y: 0.9, z: -0.8 };
         const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
         const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.4 };
@@ -157,7 +158,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const sceneContainer = document.getElementById('scene-container');
 
         function init() {
-            // Scene setup
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x2a303c);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -182,7 +182,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             orbitControls.maxDistance = 4;
             orbitControls.update();
 
-            // Lighting
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7.5);
@@ -195,7 +194,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             scene.add(spotLight);
             scene.add(spotLight.target);
 
-            // PHYSICS: Initialize the physics world
             initPhysics();
 
             createEnvironment();
@@ -210,10 +208,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             renderer.setAnimationLoop(render);
         }
 
-        // PHYSICS: Setup the Cannon.js world
         function initPhysics() {
             world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0); // Set gravity
+            world.gravity.set(0, -9.82, 0);
             world.broadphase = new CANNON.NaiveBroadphase();
             world.solver.iterations = 10;
         }
@@ -231,7 +228,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function createEnvironment() {
-            // Visuals
             const floorGeom = new THREE.PlaneGeometry(10, 10);
             const floorMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY });
             const floor = new THREE.Mesh(floorGeom, floorMat);
@@ -246,7 +242,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             bench.receiveShadow = true;
             scene.add(bench);
 
-            // PHYSICS: Create static bodies for floor and bench
             const floorShape = new CANNON.Plane();
             const floorBody = new CANNON.Body({ mass: 0 });
             floorBody.addShape(floorShape);
@@ -279,6 +274,17 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             balance = group;
             balance.position.set(balancePos.x, balancePos.y, balancePos.z);
             scene.add(balance);
+
+            // FIX: Added a static physics body for the balance
+            const balanceBody = new CANNON.Body({ mass: 0 });
+            const baseShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.05, 0.125));
+            balanceBody.addShape(baseShape);
+            const plateShape = new CANNON.Cylinder(0.1, 0.1, 0.01, 32);
+            const plateOffset = new CANNON.Vec3(0, 0.055, 0);
+            balanceBody.addShape(plateShape, plateOffset);
+            balanceBody.position.copy(balance.position);
+            balanceBody.name = "balance";
+            world.addBody(balanceBody);
         }
 
         function createBeaker() {
@@ -316,6 +322,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const weighBoatBody = new CANNON.Body({ mass: 0.1 });
             weighBoatBody.addShape(weighBoatShape);
             weighBoatBody.position.copy(weighBoat.position);
+            weighBoatBody.name = "weighBoat";
             world.addBody(weighBoatBody);
             physicsObjects.push({ mesh: weighBoat, body: weighBoatBody });
 
@@ -401,13 +408,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             context.fillStyle = 'white';
             context.textBaseline = 'middle';
             
-            // FIX: Special case for the balance display to make text larger
             if (panel === vrBalanceDisplay) {
                 context.textAlign = 'center';
-                // Title "Balance"
                 context.font = `bold ${canvas.width/12}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height * 0.3);
-                // The reading itself
                 context.font = `bold ${canvas.width/7}px 'Lato'`;
                 context.fillText(lines[1], canvas.width/2, canvas.height * 0.7);
 
@@ -655,6 +659,24 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        // FIX: Added placement check logic
+        function checkPlacementConditions() {
+            if (gameState === 'START' && !grabbedObject) {
+                const weighBoatBody = physicsObjects.find(p => p.mesh.name === 'weighBoat').body;
+                const balancePlateY = balancePos.y + 0.055; // Y position of the top of the balance plate
+                const distanceToBalance = weighBoatBody.position.distanceTo(new CANNON.Vec3(balancePos.x, balancePlateY, balancePos.z));
+                const isSettled = weighBoatBody.velocity.almostZero(0.1);
+
+                if (isSettled && distanceToBalance < 0.1) {
+                    weighBoatBody.type = CANNON.Body.KINEMATIC; // Lock it in place
+                    weighBoatBody.position.set(balancePos.x, balancePlateY + 0.02, balancePos.z);
+                    weighBoatBody.quaternion.set(0,0,0,1);
+                    balanceReading = 0.123;
+                    setGameState('BOAT_ON_BALANCE');
+                }
+            }
+        }
+
         const clock = new THREE.Clock();
         let oldElapsedTime = 0;
 
@@ -678,6 +700,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 obj.mesh.quaternion.copy(obj.body.quaternion);
             }
             
+            checkPlacementConditions();
+
             if (!renderer.xr.isPresenting) {
                 orbitControls.update();
             }
