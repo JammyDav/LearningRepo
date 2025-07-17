@@ -4,67 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Interactive Mass Spectrum Explorer (16:9 Layout)</title>
+    <!-- 
+      DEPENDENCY NOTE: Chart.js is a necessary external library for rendering the interactive chart.
+      For a fully self-contained deployment in an LMS, you would download this file 
+      and link to it locally, for example: <script src="./chart.min.js"></script>
+    -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* --- FONT & TYPOGRAPHY SETUP --- */
         :root {
+            /* CBRE Brand Colors */
             --cbre-green: #003F2D;
             --cbre-dark-gray: #435254;
             --cbre-light-gray: #CAD1D3;
             --white: #FFFFFF;
             --highlight-bg: #e6f6f2;
+
+            /* Font Families (using web-safe fallbacks) */
             --font-heading: 'Georgia', serif;
             --font-body: 'Arial', sans-serif;
         }
+
+        /* --- LAYOUT FOR FIXED 16:9 ASPECT RATIO --- */
         html {
+            /* This is the key change for scaling. It sets a base font size that scales with the viewport, 
+               but won't get smaller than 10px or larger than 16px. All 'rem' units are based on this. */
             font-size: clamp(10px, 1.8vmin, 16px);
         }
+
         body {
             height: 100vh;
             width: 100vw;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow: hidden; /* Prevent scrolling */
             font-family: var(--font-body);
             background-color: var(--white);
             color: var(--cbre-dark-gray);
         }
+
         .app-container {
             display: flex;
             height: 100%;
             width: 100%;
-            padding: 1.2rem;
-            gap: 1.2rem;
+            padding: 1.2rem; /* Reduced padding */
+            gap: 1.2rem; /* Reduced gap */
             box-sizing: border-box;
         }
+
         .left-column {
-            flex: 6;
+            flex: 6; /* Takes up more space */
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            min-width: 0;
+            min-width: 0; /* Prevents flexbox overflow */
         }
+
         .right-column {
-            flex: 4;
+            flex: 4; /* Takes up less space */
             display: flex;
             flex-direction: column;
-            gap: 1.2rem;
-            overflow-y: auto;
-            min-width: 0;
+            gap: 1.2rem; /* Reduced gap */
+            overflow-y: auto; /* Allow scrolling only in this column if content overflows */
+            min-width: 0; /* Prevents flexbox overflow */
         }
+
+        /* --- HEADER & TYPOGRAPHY --- */
         header {
             text-align: center;
-            padding-bottom: 0.8rem;
+            padding-bottom: 0.8rem; /* Reduced padding */
             border-bottom: 1px solid var(--cbre-light-gray);
         }
+
         h1, h2, h3 {
             font-family: var(--font-heading);
             color: var(--cbre-green);
             margin: 0;
         }
+        
         h1 { font-size: 2rem; font-weight: bold; margin-bottom: 0.25rem; }
         h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.8rem; }
         h3 { font-size: 1.15rem; font-weight: bold; border-bottom: 1px solid var(--cbre-light-gray); padding-bottom: 0.5rem; margin-bottom: 0.8rem;}
         p { margin: 0; }
+
+        /* --- TABS --- */
         .tabs-container {
             border-bottom: 1px solid var(--cbre-light-gray);
         }
@@ -82,23 +105,32 @@
         }
         .tab-button:hover { background-color: var(--highlight-bg); }
         .tab-button.active { color: var(--cbre-green); border-bottom-color: var(--cbre-green); }
-        .chart-wrapper, .info-card {
-            background-color: var(--white);
-            border-radius: 0.75rem;
-            padding: 1.2rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
-            border: 1px solid var(--cbre-light-gray);
-        }
+
+        /* --- CHART & CARDS --- */
         .chart-wrapper {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
+            background-color: var(--white);
+            border-radius: 0.75rem;
+            padding: 1.2rem; /* Reduced padding */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+            border: 1px solid var(--cbre-light-gray);
         }
         .chart-container {
             position: relative;
             flex-grow: 1;
             width: 100%;
         }
+        .info-card {
+            background-color: var(--white);
+            border-radius: 0.75rem;
+            padding: 1.2rem; /* Reduced padding */
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+            border: 1px solid var(--cbre-light-gray);
+        }
+
+        /* --- INTERACTIVE & INFO ELEMENTS --- */
         .peak-info-value {
             font-weight: 700;
             font-size: 1.25rem;
@@ -111,7 +143,7 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.5rem; /* Reduced gap */
         }
         .key-concepts-list li {
             display: flex;
@@ -122,7 +154,7 @@
             transition: all 0.3s ease-in-out;
         }
         .key-concepts-list li p {
-             margin-bottom: 0;
+             margin-bottom: 0; /* Removed default paragraph margin */
         }
         .key-concepts-list svg {
             width: 24px;
@@ -145,6 +177,8 @@
         .special-info.base-peak { background-color: #e6f6f2; color: #004d40; border-color: #b2dfdb; }
         .special-info.molecular-ion { background-color: #e3f2fd; color: #0d47a1; border-color: #bbdefb; }
         .special-info.isotope-peak { background-color: #f3e5f5; color: #4a148c; border-color: #e1bee7; }
+
+        /* --- TOOLTIP STYLES --- */
         .help-tooltip {
             position: relative;
             cursor: help;
@@ -181,80 +215,6 @@
             visibility: visible;
             opacity: 1;
         }
-        /* Gemini Feature Styles */
-        .gemini-button {
-            background-color: var(--cbre-green);
-            color: var(--white);
-            border: none;
-            border-radius: 0.5rem;
-            padding: 0.6rem 1rem;
-            font-size: 0.9rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin-top: 1rem;
-            width: 100%;
-        }
-        .gemini-button:hover {
-            background-color: #005a41;
-        }
-        .gemini-button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .loader {
-            display: inline-block;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid var(--cbre-green);
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            animation: spin 1s linear infinite;
-            margin-left: 8px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        #gemini-peak-output, #gemini-summary-output {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background-color: var(--highlight-bg);
-            border-radius: 0.5rem;
-            font-size: 0.9rem;
-            white-space: pre-wrap; /* Preserve formatting */
-        }
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
-            padding: 2rem;
-            border: 1px solid #888;
-            width: 60%;
-            max-width: 700px;
-            border-radius: 0.75rem;
-            position: relative;
-        }
-        .close-button {
-            color: #aaa;
-            position: absolute;
-            top: 1rem;
-            right: 1.5rem;
-            font-size: 2rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -265,7 +225,6 @@
             <header>
                 <h1>Interactive Mass Spectrum Explorer</h1>
                 <p>Select a molecule and click on the peaks in the spectrum to learn more about them.</p>
-                <button class="gemini-button" id="summarize-spectrum-btn">✨ Summarize Full Spectrum</button>
             </header>
             <div class="chart-wrapper">
                 <div class="tabs-container" role="tablist" aria-label="Molecule Spectra">
@@ -332,42 +291,113 @@
         </div>
     </div>
 
-    <!-- Modal for Gemini Output -->
-    <div id="gemini-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h3 id="modal-title">AI-Powered Analysis</h3>
-            <div id="gemini-summary-output"></div>
-        </div>
-    </div>
-
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // --- Get CSS Variables for JS ---
         const rootStyles = getComputedStyle(document.documentElement);
         const cbreDarkGray = rootStyles.getPropertyValue('--cbre-dark-gray').trim();
         const fontBody = rootStyles.getPropertyValue('--font-body').trim();
 
+        // --- DATA SETUP ---
         const moleculeData = {
-            toluene: { name: 'Toluene', formula: 'C₇H₈', peaks: [ { mz: 39, abundance: 11.5, fragment: 'C₃H₃⁺' }, { mz: 50, abundance: 8.0, fragment: 'C₄H₂⁺' }, { mz: 51, abundance: 19.8, fragment: 'C₄H₃⁺' }, { mz: 63, abundance: 11.2, fragment: 'C₅H₃⁺' }, { mz: 65, abundance: 15.4, fragment: 'C₅H₅⁺' }, { mz: 91, abundance: 100.0, fragment: 'C₇H₇⁺ (Tropylium ion)', type: 'base' }, { mz: 92, abundance: 78.5, fragment: 'C₇H₈⁺', type: 'molecular' }, { mz: 93, abundance: 6.1, fragment: '¹³CC₆H₈⁺', type: 'isotope' } ] },
-            water: { name: 'Water', formula: 'H₂O', peaks: [ { mz: 16, abundance: 20.0, fragment: 'O⁺' }, { mz: 17, abundance: 95.0, fragment: 'OH⁺' }, { mz: 18, abundance: 100.0, fragment: 'H₂O⁺', type: 'base molecular' } ] },
-            isopropyl: { name: 'Isopropyl Alcohol', formula: 'C₃H₈O', peaks: [ { mz: 27, abundance: 35.0, fragment: 'C₂H₃⁺' }, { mz: 31, abundance: 15.0, fragment: 'CH₂OH⁺' }, { mz: 39, abundance: 18.0, fragment: 'C₃H₃⁺' }, { mz: 41, abundance: 25.0, fragment: 'C₃H₅⁺' }, { mz: 43, abundance: 40.0, fragment: 'C₃H₇⁺' }, { mz: 45, abundance: 100.0, fragment: '[CH₃CH(OH)]⁺', type: 'base' }, { mz: 59, abundance: 10.0, fragment: '[M-H]⁺' }, { mz: 60, abundance: 0.5, fragment: 'C₃H₈O⁺', type: 'molecular' } ] }
+            toluene: {
+                name: 'Toluene',
+                formula: 'C₇H₈',
+                peaks: [
+                    { mz: 39, abundance: 11.5, fragment: 'C₃H₃⁺' },
+                    { mz: 50, abundance: 8.0, fragment: 'C₄H₂⁺' },
+                    { mz: 51, abundance: 19.8, fragment: 'C₄H₃⁺' },
+                    { mz: 63, abundance: 11.2, fragment: 'C₅H₃⁺' },
+                    { mz: 65, abundance: 15.4, fragment: 'C₅H₅⁺' },
+                    { mz: 91, abundance: 100.0, fragment: 'C₇H₇⁺ (Tropylium ion)', type: 'base' },
+                    { mz: 92, abundance: 78.5, fragment: 'C₇H₈⁺', type: 'molecular' },
+                    { mz: 93, abundance: 6.1, fragment: '¹³CC₆H₈⁺', type: 'isotope' }
+                ]
+            },
+            water: {
+                name: 'Water',
+                formula: 'H₂O',
+                peaks: [
+                    { mz: 16, abundance: 20.0, fragment: 'O⁺' },
+                    { mz: 17, abundance: 95.0, fragment: 'OH⁺' },
+                    { mz: 18, abundance: 100.0, fragment: 'H₂O⁺', type: 'base molecular' }
+                ]
+            },
+            isopropyl: {
+                name: 'Isopropyl Alcohol',
+                formula: 'C₃H₈O',
+                peaks: [
+                    { mz: 27, abundance: 35.0, fragment: 'C₂H₃⁺' },
+                    { mz: 31, abundance: 15.0, fragment: 'CH₂OH⁺' },
+                    { mz: 39, abundance: 18.0, fragment: 'C₃H₃⁺' },
+                    { mz: 41, abundance: 25.0, fragment: 'C₃H₅⁺' },
+                    { mz: 43, abundance: 40.0, fragment: 'C₃H₇⁺' },
+                    { mz: 45, abundance: 100.0, fragment: '[CH₃CH(OH)]⁺', type: 'base' },
+                    { mz: 59, abundance: 10.0, fragment: '[M-H]⁺' },
+                    { mz: 60, abundance: 0.5, fragment: 'C₃H₈O⁺', type: 'molecular' }
+                ]
+            }
         };
 
         let currentMolecule = 'toluene';
-        let selectedPeak = null;
-        const geminiModal = document.getElementById('gemini-modal');
-        const closeModalBtn = document.querySelector('.close-button');
 
+        // --- CHART RENDERING ---
         const ctx = document.getElementById('massSpecChart').getContext('2d');
         const massSpecChart = new Chart(ctx, {
             type: 'bar',
-            data: { labels: [], datasets: [{ label: 'Relative Abundance', data: [], backgroundColor: 'rgba(0, 63, 45, 0.8)', borderColor: 'rgba(0, 63, 45, 1)', borderWidth: 2, barPercentage: 0.9, categoryPercentage: 0.8, }] },
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Relative Abundance',
+                    data: [],
+                    backgroundColor: 'rgba(0, 63, 45, 0.8)',
+                    borderColor: 'rgba(0, 63, 45, 1)',
+                    borderWidth: 2,
+                    barPercentage: 0.9,
+                    categoryPercentage: 0.8,
+                }]
+            },
             options: {
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: true, filter: (item) => item.raw > 0, callbacks: { title: (context) => `m/z: ${context[0].label}`, label: (context) => `Abundance: ${context.raw.toFixed(2)}%` } } },
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        filter: (item) => item.raw > 0,
+                        callbacks: {
+                            title: (context) => `m/z: ${context[0].label}`,
+                            label: (context) => `Abundance: ${context.raw.toFixed(2)}%`
+                        }
+                    }
+                },
                 scales: {
-                    x: { type: 'linear', title: { display: true, text: 'm/z (Mass-to-Charge Ratio)', font: { size: 14, family: fontBody }, color: cbreDarkGray }, grid: { display: false }, ticks: { color: cbreDarkGray }, min: 0 },
-                    y: { title: { display: true, text: 'Relative Abundance (%)', font: { size: 14, family: fontBody }, color: cbreDarkGray }, beginAtZero: true, max: 110, ticks: { callback: (value) => value + '%', color: cbreDarkGray } }
+                    x: {
+                        type: 'linear',
+                        title: {
+                            display: true,
+                            text: 'm/z (Mass-to-Charge Ratio)',
+                            font: { size: 14, family: fontBody },
+                            color: cbreDarkGray
+                        },
+                        grid: { display: false },
+                        ticks: { color: cbreDarkGray },
+                        min: 0
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Relative Abundance (%)',
+                            font: { size: 14, family: fontBody },
+                            color: cbreDarkGray
+                        },
+                        beginAtZero: true,
+                        max: 110,
+                        ticks: {
+                           callback: (value) => value + '%',
+                           color: cbreDarkGray
+                        }
+                    }
                 },
                 onClick: (event, elements) => {
                     if (elements.length > 0) {
@@ -375,7 +405,6 @@
                         const clickedMz = massSpecChart.data.labels[clickedIndex];
                         const peakData = moleculeData[currentMolecule].peaks.find(p => p.mz === clickedMz);
                         if (peakData) {
-                            selectedPeak = peakData;
                             updatePeakInfo(peakData);
                         }
                     }
@@ -383,19 +412,28 @@
             }
         });
 
+        // --- UI UPDATE FUNCTIONS ---
         function updateChart(moleculeName) {
             currentMolecule = moleculeName;
-            selectedPeak = null;
             const data = moleculeData[moleculeName];
+            
             const maxMz = Math.max(...data.peaks.map(p => p.mz));
             const labels = Array.from({ length: maxMz + 2 }, (_, i) => i);
             const abundanceData = new Array(maxMz + 2).fill(0);
-            data.peaks.forEach(peak => { if(peak.mz < abundanceData.length) { abundanceData[peak.mz] = peak.abundance; } });
+            
+            data.peaks.forEach(peak => {
+                if(peak.mz < abundanceData.length) {
+                   abundanceData[peak.mz] = peak.abundance;
+                }
+            });
+
             massSpecChart.data.labels = labels;
             massSpecChart.data.datasets[0].data = abundanceData;
             massSpecChart.update();
+
             document.getElementById('chart-title').textContent = `Mass Spectrum of ${data.name} (${data.formula})`;
             resetPeakInfo();
+
             document.querySelectorAll('.tab-button').forEach(btn => {
                 const isActive = btn.dataset.molecule === moleculeName;
                 btn.classList.toggle('active', isActive);
@@ -412,10 +450,21 @@
         function updatePeakInfo(peak) {
             const peakDetailsContent = document.getElementById('peak-details-content');
             resetPeakInfo();
+
             let specialInfo = '';
-            if (peak.type?.includes('base')) { specialInfo += `<div class="special-info base-peak"><strong>This is the Base Peak!</strong> It's the most abundant fragment.</div>`; document.getElementById('base-peak-def').classList.add('highlight-concept'); }
-            if (peak.type?.includes('molecular')) { const text = peak.type.includes('base') ? 'It is also the Molecular Ion (M).' : '<strong>This is the Molecular Ion (M)!</strong> It represents the intact molecule.'; specialInfo += `<div class="special-info molecular-ion">${text}</div>`; }
-            if (peak.type?.includes('isotope')) { specialInfo += `<div class="special-info isotope-peak"><strong>This is an Isotope Peak (M+1)!</strong> It's caused by a heavier isotope.</div>`; document.getElementById('isotope-peak-def').classList.add('highlight-concept'); }
+            if (peak.type?.includes('base')) {
+                specialInfo += `<div class="special-info base-peak"><strong>This is the Base Peak!</strong> It's the most abundant fragment.</div>`;
+                document.getElementById('base-peak-def').classList.add('highlight-concept');
+            }
+            if (peak.type?.includes('molecular')) {
+                const text = peak.type.includes('base') ? 'It is also the Molecular Ion (M).' : '<strong>This is the Molecular Ion (M)!</strong> It represents the intact molecule.';
+                specialInfo += `<div class="special-info molecular-ion">${text}</div>`;
+            }
+            if (peak.type?.includes('isotope')) {
+                specialInfo += `<div class="special-info isotope-peak"><strong>This is an Isotope Peak (M+1)!</strong> It's caused by a heavier isotope.</div>`;
+                document.getElementById('isotope-peak-def').classList.add('highlight-concept');
+            }
+            
             peakDetailsContent.innerHTML = `
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <div><span style="color: #6c757d;">m/z Value:</span><div class="peak-info-value">${peak.mz}</div></div>
@@ -423,71 +472,18 @@
                     <div><span style="color: #6c757d;">Potential Fragment:</span><div class="peak-info-value">${peak.fragment}</div></div>
                 </div>
                 ${specialInfo}
-                <button class="gemini-button" id="explain-peak-btn">✨ Explain This Peak</button>
-                <div id="gemini-peak-output"></div>`;
-            document.getElementById('explain-peak-btn').addEventListener('click', handleExplainPeak);
+            `;
         }
 
-        async function callGemini(prompt, button, outputElement) {
-            button.disabled = true;
-            button.innerHTML = 'Analyzing... <div class="loader"></div>';
-            outputElement.style.display = 'none';
-
-            try {
-                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
-                const payload = { contents: chatHistory };
-                const apiKey = "";
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.statusText}`);
-                }
-
-                const result = await response.json();
-                
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    outputElement.innerText = text;
-                    outputElement.style.display = 'block';
-                } else {
-                    throw new Error("Invalid response structure from API.");
-                }
-            } catch (error) {
-                outputElement.innerText = `Error: ${error.message}`;
-                outputElement.style.display = 'block';
-            } finally {
-                button.disabled = false;
-                button.innerHTML = button.id === 'explain-peak-btn' ? '✨ Explain This Peak' : '✨ Summarize Full Spectrum';
+        // --- EVENT LISTENERS ---
+        document.querySelector('.tabs-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('tab-button')) {
+                const moleculeName = e.target.dataset.molecule;
+                updateChart(moleculeName);
             }
-        }
+        });
 
-        function handleExplainPeak() {
-            if (!selectedPeak) return;
-            const molecule = moleculeData[currentMolecule];
-            const prompt = `In mass spectrometry for the molecule ${molecule.name} (${molecule.formula}), explain the significance of the fragment ion "${selectedPeak.fragment}" observed at an m/z of ${selectedPeak.mz}. How is this fragment likely formed from the parent molecule? Keep the explanation concise and suitable for a beginner.`;
-            callGemini(prompt, document.getElementById('explain-peak-btn'), document.getElementById('gemini-peak-output'));
-        }
-
-        function handleSummarizeSpectrum() {
-            const molecule = moleculeData[currentMolecule];
-            const peakList = molecule.peaks.map(p => `m/z ${p.mz} (${p.abundance.toFixed(1)}%)`).join(', ');
-            const prompt = `Provide a summary interpretation of the mass spectrum for ${molecule.name} (${molecule.formula}). The key peaks are: ${peakList}. Explain how the molecular ion, base peak, and other significant fragments confirm the structure of the molecule. Present the information clearly for a learner.`;
-            
-            document.getElementById('modal-title').innerText = `AI Summary for ${molecule.name}`;
-            geminiModal.style.display = 'flex';
-            callGemini(prompt, document.getElementById('summarize-spectrum-btn'), document.getElementById('gemini-summary-output'));
-        }
-
-        document.getElementById('summarize-spectrum-btn').addEventListener('click', handleSummarizeSpectrum);
-        closeModalBtn.onclick = () => { geminiModal.style.display = "none"; };
-        window.onclick = (event) => { if (event.target == geminiModal) { geminiModal.style.display = "none"; } };
-        
+        // --- INITIAL LOAD ---
         updateChart('toluene');
     });
     </script>
