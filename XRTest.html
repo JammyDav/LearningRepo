@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXR Virtual Pipette Calibration Lab (Fixed)</title>
+    <title>WebXR Virtual Pipette Calibration Lab (CBRE Branded)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- BRANDING: Added Google Fonts to approximate CBRE brand typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        body { margin: 0; font-family: 'Lato', sans-serif; overflow: hidden; }
         #scene-container { width: 100vw; height: 100vh; }
         #vr-button { position: absolute; bottom: 20px; right: 20px; }
     </style>
@@ -18,7 +21,7 @@
     <div id="scene-container"></div>
 
     <script type="module">
-        // --- VR BUTTON UTILITY (with improved error handling) ---
+        // --- VR BUTTON UTILITY ---
         class VRButton {
             static createButton(renderer, onSessionStart, onSessionEnd) {
                 const button = document.createElement('button');
@@ -32,10 +35,7 @@
                             button.textContent = 'EXIT VR';
                             currentSession = session;
                             console.log("WebXR session set on renderer.");
-                            // Callback to initialize VR-specific components
-                            if (typeof onSessionStart === 'function') {
-                                onSessionStart();
-                            }
+                            if (typeof onSessionStart === 'function') onSessionStart();
                         } catch (e) {
                             console.error("Failed to set renderer XR session", e);
                             alert("An error occurred while setting up the VR session.");
@@ -46,10 +46,7 @@
                         currentSession.removeEventListener('end', onSessionEnded);
                         button.textContent = 'ENTER VR';
                         currentSession = null;
-                        // Callback to clean up VR components
-                        if (typeof onSessionEnd === 'function') {
-                            onSessionEnd();
-                        }
+                        if (typeof onSessionEnd === 'function') onSessionEnd();
                     }
                     
                     button.style.display = '';
@@ -62,15 +59,13 @@
                     button.style.borderRadius = '4px';
                     button.style.background = 'rgba(0,0,0,0.5)';
                     button.style.color = '#fff';
-                    button.style.font = 'normal 16px Inter, sans-serif';
+                    button.style.font = 'normal 16px Lato, sans-serif';
                     button.textContent = 'ENTER VR';
                     button.onmouseenter = () => { button.style.opacity = '1.0'; };
                     button.onmouseleave = () => { button.style.opacity = '0.9'; };
 
                     button.onclick = () => {
                         if (currentSession === null) {
-                            console.log("Requesting WebXR session...");
-                            // FIX: Simplified session request to be as basic as possible.
                             const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor'] };
                             navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch(err => {
                                 console.error("Failed to request WebXR session:", err);
@@ -122,11 +117,17 @@
         let grabbedObject = null;
         let controllerPointingAt = null;
 
-        const benchPos = { x: 0, y: 0.8, z: -1 };
-        const balancePos = { x: -0.5, y: benchPos.y + 0.25, z: benchPos.z };
-        const beakerPos = { x: 0.5, y: benchPos.y + 0.15, z: benchPos.z };
-        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.06, z: benchPos.z + 0.5 };
-        const pipetteStartPos = { x: 0, y: benchPos.y + 0.4, z: benchPos.z - 0.2 };
+        // BRANDING: CBRE Colors
+        const CBRE_GREEN = '#003F2D';
+        const CBRE_DARK_GREY = '#435254';
+        const CBRE_LIGHT_GREY = '#CAD1D3';
+        const CBRE_HIGHLIGHT_GREEN = '#006A4D';
+
+        const benchPos = { x: 0, y: 0.9, z: -0.8 };
+        const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
+        const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
+        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.005, z: benchPos.z + 0.4 };
+        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z - 0.2 };
 
         let gameState = 'INIT';
         let measurements = [];
@@ -134,12 +135,11 @@
         let balanceReading = 0.0;
         let isPipetteFull = false;
 
-        // --- DOM ELEMENTS ---
         const sceneContainer = document.getElementById('scene-container');
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x2d3748);
+            scene.background = new THREE.Color(0x1a202c);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 1.6, 0.5);
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -148,13 +148,20 @@
             renderer.shadowMap.enabled = true;
             renderer.xr.enabled = true;
             sceneContainer.appendChild(renderer.domElement);
-            // FIX: Pass callbacks to the VRButton for session start/end
             document.body.appendChild(VRButton.createButton(renderer, onSessionStart, onSessionEnd));
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
             dirLight.position.set(5, 10, 7.5);
             dirLight.castShadow = true;
             scene.add(dirLight);
+            const spotLight = new THREE.SpotLight(0xffffff, 0.8, 10, Math.PI / 4, 0.5, 2);
+            spotLight.position.set(0, 3, 0);
+            spotLight.target.position.set(0, 0, -1);
+            spotLight.castShadow = true;
+            scene.add(spotLight);
+            scene.add(spotLight.target);
+
             createEnvironment();
             createBalance();
             createBeaker();
@@ -167,85 +174,80 @@
             renderer.setAnimationLoop(render);
         }
 
-        // --- VR SESSION MANAGEMENT ---
         function onSessionStart() {
-            console.log("Initializing controllers for VR session.");
             initControllers();
         }
 
         function onSessionEnd() {
-            console.log("Cleaning up controllers from VR session.");
-            // Remove controllers from scene and clear array
-            controllers.forEach(controller => {
-                scene.remove(controller);
-            });
+            controllers.forEach(controller => scene.remove(controller));
             controllers = [];
-            // Reset simulation to a clean state
             resetSimulation();
         }
 
         function createEnvironment() {
+            // BRANDING: Updated floor and bench colors
             const floorGeom = new THREE.PlaneGeometry(10, 10);
-            const floorMat = new THREE.MeshStandardMaterial({ color: 0x808080 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY });
             const floor = new THREE.Mesh(floorGeom, floorMat);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
-            const benchGeom = new THREE.BoxGeometry(2, 0.5, 1);
-            const benchMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db });
+            const benchGeom = new THREE.BoxGeometry(2.5, 0.1, 1.2);
+            const benchMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY, metalness: 0.1, roughness: 0.8 });
             bench = new THREE.Mesh(benchGeom, benchMat);
             bench.position.set(benchPos.x, benchPos.y, benchPos.z);
-            bench.castShadow = true;
             bench.receiveShadow = true;
             scene.add(bench);
         }
 
         function createBalance() {
             const group = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: 0xe5e7eb }));
+            // BRANDING: Updated balance colors
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             base.castShadow = true;
             group.add(base);
-            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: 0x9ca3af, metalness: 0.5 }));
+            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 0.5 }));
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
             const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
-            const tareButtonMat = new THREE.MeshStandardMaterial({ color: 'red' });
+            const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
             tareButton.name = 'tareButton';
             tareButton.position.set(0.1, 0.055, 0.08);
             group.add(tareButton);
             balance = group;
-            balance.position.set(balancePos.x, balancePos.y - 0.2, balancePos.z);
+            balance.position.set(balancePos.x, balancePos.y, balancePos.z);
             scene.add(balance);
         }
 
         function createBeaker() {
-            const beakerMat = new THREE.MeshPhysicalMaterial({ color: 0xadd8e6, transmission: 0.9, thickness: 0.1, roughness: 0.1 });
+            const beakerMat = new THREE.MeshPhysicalMaterial({ color: CBRE_LIGHT_GREY, transmission: 0.9, thickness: 0.1, roughness: 0.1 });
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
-            beaker.position.set(beakerPos.x, beakerPos.y - 0.2, beakerPos.z);
+            beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
             scene.add(beaker);
-            const waterMat = new THREE.MeshBasicMaterial({ color: 0x4299e1, transparent: true, opacity: 0.7 });
+            const waterMat = new THREE.MeshBasicMaterial({ color: '#63b3ed', transparent: true, opacity: 0.7 });
             const water = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 32), waterMat);
             water.position.y = -0.01;
             beaker.add(water);
         }
 
         function createWeighBoat() {
-            const boatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const boatMat = new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY, side: THREE.DoubleSide });
             const shape = new THREE.Shape();
             shape.moveTo(-0.05, -0.05); shape.lineTo(0.05, -0.05); shape.lineTo(0.07, 0.05); shape.lineTo(-0.07, 0.05);
             shape.closePath();
             const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.005, bevelEnabled: false });
             weighBoat = new THREE.Mesh(geometry, boatMat);
+            weighBoat.scale.set(1.2, 1.2, 1.2);
             weighBoat.rotation.x = -Math.PI / 2;
             weighBoat.castShadow = true;
-            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y - 0.2, weighBoatStartPos.z);
+            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y, weighBoatStartPos.z);
             weighBoat.name = "weighBoat";
             scene.add(weighBoat);
             grabbableObjects.push(weighBoat);
             const waterInBoatGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
-            const waterInBoatMat = new THREE.MeshBasicMaterial({ color: 0x4299e1, transparent: true, opacity: 0.9 });
+            const waterInBoatMat = new THREE.MeshBasicMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
             const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
             waterInBoat.name = 'dispensedWater';
             waterInBoat.visible = false;
@@ -254,16 +256,18 @@
 
         function createPipette() {
             const group = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0xd1d5db }));
+            // BRANDING: Updated pipette colors
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             group.add(body);
-            const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
+            const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: CBRE_GREEN }));
             plunger.position.y = 0.17;
             plunger.name = 'plunger';
             group.add(plunger);
-            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xd1d5db }));
+            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.08, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             tip.position.y = -0.19;
             group.add(tip);
             pipette = group;
+            pipette.scale.set(1.2, 1.2, 1.2);
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
             pipette.name = "pipette";
             scene.add(pipette);
@@ -271,20 +275,23 @@
         }
 
         function createVRUI() {
-            vrInstructionPanel = createTextPanel(512, 256);
-            vrInstructionPanel.position.set(-1.2, 1.8, -1.5);
+            vrInstructionPanel = createTextPanel(512, 300);
+            vrInstructionPanel.position.set(-1.2, 1.8, -1.2);
+            vrInstructionPanel.rotation.y = Math.PI / 8;
             scene.add(vrInstructionPanel);
-            vrResultsPanel = createTextPanel(512, 512);
-            vrResultsPanel.position.set(1.2, 1.8, -1.5);
+            vrResultsPanel = createTextPanel(512, 600);
+            vrResultsPanel.position.set(1.2, 1.8, -1.2);
+            vrResultsPanel.rotation.y = -Math.PI / 8;
             scene.add(vrResultsPanel);
             vrBalanceDisplay = createTextPanel(256, 128);
             vrBalanceDisplay.position.set(0, 0.15, 0);
             balance.add(vrBalanceDisplay);
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
-            const resetButtonMat = new THREE.MeshStandardMaterial({ color: '#dc2626' });
+            // BRANDING: Updated reset button color
+            const resetButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
             resetButton.name = 'resetButton';
-            resetButton.position.set(0, 1.2, -1.8);
+            resetButton.position.set(0, 1.3, -1.5);
             const resetButtonText = createTextPanel(256, 128);
             updateTextPanel(resetButtonText, ["RESET"]);
             resetButtonText.position.z = 0.011;
@@ -297,8 +304,8 @@
             canvas.width = canvasWidth; canvas.height = canvasHeight;
             const context = canvas.getContext('2d');
             const texture = new THREE.CanvasTexture(canvas);
-            const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-            const geometry = new THREE.PlaneGeometry(canvasWidth / 512, canvasHeight / 512);
+            const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.9 });
+            const geometry = new THREE.PlaneGeometry(canvasWidth / 1024, canvasHeight / 1024);
             const panel = new THREE.Mesh(geometry, material);
             panel.userData = { canvas, context, texture };
             return panel;
@@ -308,24 +315,31 @@
             const { canvas, context, texture } = panel.userData;
             context.fillStyle = 'rgba(24, 24, 27, 0.8)';
             context.fillRect(0, 0, canvas.width, canvas.height);
-            context.strokeStyle = '#4f46e5';
+            // BRANDING: Updated border color
+            context.strokeStyle = CBRE_GREEN;
             context.lineWidth = 10;
-            context.strokeRect(0, 0, canvas.width, canvas.height);
+            context.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
             context.fillStyle = 'white';
-            context.textAlign = 'center';
             context.textBaseline = 'middle';
-            context.font = `bold ${canvas.width/8}px Inter`;
+            
             if (lines.length === 1) {
-                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
+                context.textAlign = 'center';
+                // BRANDING: Updated font
+                context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
+                context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
-                context.font = `bold ${canvas.width/16}px Inter`;
-                context.fillText(lines[0], 20, 50);
-                context.font = `${canvas.width/20}px Inter`;
-                let y = 100;
+                let lineSpacing = canvas.height / (lines.length + 2);
+                if (panel === vrResultsPanel) lineSpacing = 55;
+                
+                // BRANDING: Updated font for heading
+                context.font = `bold ${canvas.width/18}px 'Playfair Display'`;
+                context.fillText(lines[0], 25, lineSpacing);
+                
+                // BRANDING: Updated font for body
+                context.font = `normal ${canvas.width/22}px 'Lato'`;
                 for (let i = 1; i < lines.length; i++) {
-                    context.fillText(lines[i], 20, y);
-                    y += 40;
+                    context.fillText(lines[i], 25, lineSpacing * (i + 1.2));
                 }
             }
             texture.needsUpdate = true;
@@ -336,7 +350,7 @@
                 const controller = renderer.xr.getController(i);
                 scene.add(controller);
                 controllers.push(controller);
-                const handMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+                const handMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, emissive: 0x222222 });
                 const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.02), handMat);
                 palm.position.z = 0.01;
                 controller.add(palm);
@@ -354,10 +368,9 @@
         function onSqueezeStart(event) {
             const controller = event.target;
             if (grabbedObject) return;
-
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
             let closestObj = null;
-            let minDistance = 0.1;
+            let minDistance = 0.15;
             grabbableObjects.forEach(obj => {
                 if (obj.parent === scene) {
                     const objPos = obj.getWorldPosition(new THREE.Vector3());
@@ -369,7 +382,6 @@
                 }
             });
             if (closestObj) {
-                console.log("Grabbing:", closestObj.name);
                 controller.attach(closestObj);
                 grabbedObject = { object: closestObj, controller };
                 if (closestObj.name === 'pipette' && gameState === 'BALANCE_TARED') {
@@ -380,7 +392,6 @@
 
         function onSqueezeEnd(event) {
             if (grabbedObject) {
-                console.log("Releasing:", grabbedObject.object.name);
                 const { object } = grabbedObject;
                 const worldPos = object.getWorldPosition(new THREE.Vector3());
                 const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
@@ -401,7 +412,6 @@
         }
 
         function onSelectStart(event) {
-            const controller = event.target;
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
                     balanceReading = 0.0;
@@ -443,12 +453,10 @@
 
         function setGameState(newState) {
             gameState = newState;
-            console.log("New State:", gameState);
             updateVRUI();
         }
 
         function resetSimulation() {
-            console.log("Resetting simulation...");
             if (grabbedObject) {
                 const { object } = grabbedObject;
                 const worldPos = object.getWorldPosition(new THREE.Vector3());
@@ -458,8 +466,7 @@
                 object.quaternion.copy(worldQuat);
                 grabbedObject = null;
             }
-
-            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y - 0.2, weighBoatStartPos.z);
+            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y, weighBoatStartPos.z);
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
             weighBoat.getObjectByName('dispensedWater').visible = false;
             measurements = [];
@@ -472,7 +479,7 @@
             let instructions = ["Lab Procedure"];
             switch(gameState) {
                 case 'START': instructions.push("Grab the weigh boat (use grip button)."); break;
-                case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at red TARE button & trigger."); break;
+                case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at green TARE button & trigger."); break;
                 case 'BALANCE_TARED': instructions.push("Grab the micropipette."); break;
                 case 'PIPETTE_HELD': instructions.push("Move pipette to beaker, press trigger."); break;
                 case 'WATER_ASPIRATED': instructions.push("Move pipette over boat, press trigger."); break;
@@ -507,32 +514,68 @@
             return { mean, stdDev, pass };
         }
 
-        function handleController(controller) {
+        function handleProximityHighlights() {
+            const highlightColor = new THREE.Color(CBRE_HIGHLIGHT_GREEN);
+            const highlightIntensity = 0.5;
+            const highlightDistance = 0.15;
+
+            grabbableObjects.forEach(obj => {
+                let isHighlighted = false;
+                if(obj.parent === scene) {
+                    controllers.forEach(controller => {
+                        const controllerPos = controller.getWorldPosition(new THREE.Vector3());
+                        const objPos = obj.getWorldPosition(new THREE.Vector3());
+                        if(controllerPos.distanceTo(objPos) < highlightDistance) {
+                            isHighlighted = true;
+                        }
+                    });
+                }
+                
+                obj.traverse(child => {
+                    if(child.isMesh) {
+                        child.material.emissive = child.material.emissive || new THREE.Color(0x000000);
+                        if(isHighlighted) {
+                            child.material.emissive.set(highlightColor);
+                            child.material.emissiveIntensity = highlightIntensity;
+                        } else {
+                            child.material.emissive.set(0x000000);
+                        }
+                    }
+                });
+            });
+        }
+
+        function handleControllerRaycasting() {
             const raycaster = new THREE.Raycaster();
             const tempMatrix = new THREE.Matrix4();
-            tempMatrix.identity().extractRotation(controller.matrixWorld);
-            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
             
-            const intersects = raycaster.intersectObjects([tareButton, resetButton]);
-            
-            if (controllerPointingAt && (!intersects.length || intersects[0].object !== controllerPointingAt)) {
-                 if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set('red');
-                 if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set('#dc2626');
-                 controllerPointingAt = null;
+            let pointedObject = null;
+            controllers.forEach(controller => {
+                 tempMatrix.identity().extractRotation(controller.matrixWorld);
+                 raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+                 raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+                 const intersects = raycaster.intersectObjects([tareButton, resetButton]);
+                 if (intersects.length > 0) {
+                     pointedObject = intersects[0].object;
+                 }
+            });
+
+            if (controllerPointingAt && controllerPointingAt !== pointedObject) {
+                 if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
+                 if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
             }
 
-            if (intersects.length > 0) {
-                controllerPointingAt = intersects[0].object;
-                controllerPointingAt.material.color.set('yellow');
+            controllerPointingAt = pointedObject;
+            if (controllerPointingAt) {
+                // BRANDING: Updated highlight color
+                controllerPointingAt.material.color.set(CBRE_GREEN);
             }
         }
 
         function render() {
             if (renderer.xr.isPresenting) {
-                controllers.forEach(controller => {
-                    if(!grabbedObject) handleController(controller);
-                });
+                handleProximityHighlights();
+                handleControllerRaycasting();
             }
             updateTextPanel(vrBalanceDisplay, ["Balance", `${balanceReading.toFixed(4)} g`]);
             renderer.render(scene, camera);
