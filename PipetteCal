@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipette Calibration Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 
+        Font Note:
+        CBRE brand fonts (Financier Display, Calibre) are proprietary.
+        The following Google Fonts have been used as the closest available substitutes:
+        - 'Playfair Display' for headings (replaces Financier Display)
+        - 'Lato' for body text (replaces Calibre)
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* CBRE Brand Colors */
+        :root {
+            --cbre-green: #003F2D;
+            --cbre-dark-grey: #435254;
+            --cbre-light-grey: #CAD1D3;
+            --cbre-green-tint: rgba(0, 63, 45, 0.1);
+            --cbre-liquid-color: #76b5a8; 
+        }
+
+        /* Typography */
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: #f8f9fa;
+            color: var(--cbre-dark-grey);
+        }
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            color: var(--cbre-green);
+        }
+
+        /* Component Styling */
+        .balance-screen {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #eef3f2;
+            color: var(--cbre-green);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
+        }
+        .draggable {
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
+        }
+        .dragging {
+            cursor: grabbing;
+            opacity: 0.9;
+            z-index: 1000;
+        }
+        .drop-zone {
+            border: 2px dashed transparent;
+            transition: border-color 0.3s, background-color 0.3s;
+        }
+        .drop-zone-hover {
+            border-color: var(--cbre-green);
+            background-color: var(--cbre-green-tint);
+        }
+        .pipette-tip-liquid, #pipette-body-liquid {
+            transition: height 0.5s ease;
+            background-color: var(--cbre-liquid-color);
+        }
+        .weighing-boat-liquid {
+            transition: transform 0.5s ease, opacity 0.5s ease;
+            transform-origin: bottom;
+            background-color: var(--cbre-liquid-color);
+        }
+        #beaker-drop-zone {
+            z-index: 1;
+        }
+        .beaker-water {
+             background-color: var(--cbre-liquid-color);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-6xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-2">Pipette Calibration Simulator</h1>
+        <p class="text-center mb-6">Follow the steps to calibrate a 1000µL (1mL) pipette.</p>
+
+        <!-- Main Simulation Area -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Panel: Instructions and Data -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2">Instructions & Data</h2>
+                <div id="instruction-panel" class="bg-['#e6f0ed'] border border-['#003F2D'] text-['#003F2D'] p-4 rounded-lg mb-4">
+                    <p id="instruction-text" class="font-medium">Welcome! Let's begin. Drag the empty weighing boat onto the balance pan.</p>
+                </div>
+                
+                <div id="data-panel" class="hidden">
+                    <h3 class="text-xl font-bold mb-2">Recorded Weights (g):</h3>
+                    <ul id="readings-list" class="list-disc list-inside bg-gray-50 p-3 rounded-md h-32 overflow-y-auto">
+                        <!-- Readings will be added here -->
+                    </ul>
+                    <div id="results-panel" class="mt-4 hidden">
+                         <h3 class="text-xl font-bold mb-2">Results:</h3>
+                         <div class="text-sm space-y-1">
+                            <p><strong>Mean:</strong> <span id="mean-value"></span> g</p>
+                            <p><strong>Std Dev:</strong> <span id="std-dev-value"></span> g</p>
+                            <p><strong>Accuracy:</strong> <span id="accuracy-value"></span>%</p>
+                            <p><strong>Precision (CV%):</strong> <span id="precision-value"></span>%</p>
+                            <p id="final-verdict" class="font-bold mt-2 p-2 rounded-md"></p>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center Panel: The Workbench -->
+            <div class="lg:col-span-2 bg-['#CAD1D3'] p-6 rounded-xl shadow-lg relative h-[650px]" id="workbench">
+                
+                <!-- Digital Balance -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-4/5 max-w-md z-10">
+                    <div class="bg-white rounded-t-lg p-4 shadow-2xl">
+                        <div id="balance-pan" class="drop-zone h-20 w-40 mx-auto bg-gray-300 rounded-lg shadow-inner flex items-center justify-center relative">
+                             <div class="w-36 h-16 bg-gray-400 rounded-md border-2 border-gray-500"></div>
+                        </div>
+                    </div>
+                    <div class="bg-['#435254'] text-white p-4 rounded-b-lg shadow-2xl flex items-center justify-between">
+                        <div class="balance-screen w-1/2 h-12 flex items-center justify-end px-3 rounded-md text-3xl">
+                            <span id="balance-display">0.0000</span><span class="text-lg ml-2">g</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="tare-button" class="bg-['#003F2D'] hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded-md transition-all disabled:bg-['#CAD1D3'] disabled:cursor-not-allowed">Tare</button>
+                            <button id="reset-button" class="bg-['#435254'] border-2 border-white/50 hover:bg-white hover:text-['#435254'] text-white font-bold py-2 px-4 rounded-md transition-all">Reset</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lab Items Area -->
+                <div id="items-area" class="absolute top-4 left-4 right-4 bottom-[200px]">
+                    <!-- Pipette -->
+                    <div id="pipette" class="draggable lab-item absolute w-16 text-center z-20" style="top: 20px; left: 60px;">
+                        <div class="bg-gray-300 w-full h-8 rounded-t-full flex items-center justify-center relative">
+                            <button id="plunger-button" class="absolute -top-6 bg-['#003F2D'] h-10 w-10 rounded-full shadow-lg border-4 border-white focus:outline-none focus:ring-2 ring-offset-2 ring-['#003F2D'] disabled:bg-['#CAD1D3'] disabled:cursor-not-allowed" disabled title="Aspirate/Dispense"></button>
+                        </div>
+                        <div class="bg-white w-full h-40 shadow-md p-1">
+                            <div class="bg-gray-200 h-full w-full relative overflow-hidden">
+                                <div id="pipette-liquid" class="absolute bottom-0 left-0 w-full" style="height: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-300 w-full h-2"></div>
+                        <div class="bg-white w-10/12 mx-auto h-12 shadow-md p-1">
+                             <div class="bg-gray-200 h-full w-full relative">
+                                <div id="pipette-body-liquid" class="absolute bottom-0 left-0 w-full" style="height: 0%;"></div>
+                             </div>
+                        </div>
+                        <div class="w-4 h-8 bg-gray-400 mx-auto rounded-b-md relative">
+                           <div id="pipette-tip-liquid" class="absolute bottom-0 left-0 w-full rounded-b-md" style="height: 0%;"></div>
+                        </div>
+                        <p class="text-xs mt-1 font-semibold">1000µL Pipette</p>
+                    </div>
+
+                    <!-- Beaker of Water -->
+                    <div id="beaker" class="lab-item absolute w-24 text-center" style="top: 60px; right: 150px;">
+                        <div id="beaker-drop-zone" class="drop-zone absolute top-0 left-0 w-full h-full"></div>
+                        <div class="w-full h-28 bg-gray-200 bg-opacity-50 border-2 border-gray-400 rounded-t-lg relative pointer-events-none">
+                            <div class="beaker-water absolute bottom-0 left-0 w-full h-5/6"></div>
+                            <div class="beaker-water absolute top-1 left-0 w-full h-1 opacity-50 rounded-full"></div>
+                        </div>
+                        <p class="text-xs mt-1 font-semibold pointer-events-none">Distilled Water</p>
+                    </div>
+
+                    <!-- Weighing Boat -->
+                    <div id="weighing-boat" data-weight="1.5432" class="draggable lab-item absolute w-24 h-16 text-center group" style="top: 300px; right: 80px;">
+                        <div class="w-full h-full bg-white opacity-80 shadow-md rounded-lg flex items-center justify-center" style="transform: perspective(100px) rotateX(20deg);">
+                           <div class="weighing-boat-liquid w-10/12 h-4/6 rounded-md opacity-0" style="transform: scaleY(0);"></div>
+                        </div>
+                        <p class="text-xs mt-1 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">Weighing Boat</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM ELEMENT REFERENCES ---
+        const balanceDisplay = document.getElementById('balance-display');
+        const balancePan = document.getElementById('balance-pan');
+        const tareButton = document.getElementById('tare-button');
+        const resetButton = document.getElementById('reset-button');
+        const plungerButton = document.getElementById('plunger-button');
+        const instructionText = document.getElementById('instruction-text');
+        const dataPanel = document.getElementById('data-panel');
+        const readingsList = document.getElementById('readings-list');
+        const resultsPanel = document.getElementById('results-panel');
+        const pipette = document.getElementById('pipette');
+        const pipetteTipLiquid = document.getElementById('pipette-tip-liquid');
+        const pipetteBodyLiquid = document.getElementById('pipette-body-liquid');
+        const weighingBoat = document.getElementById('weighing-boat');
+        const weighingBoatLiquid = weighingBoat.querySelector('.weighing-boat-liquid');
+        const itemsArea = document.getElementById('items-area');
+        const beakerDropZone = document.getElementById('beaker-drop-zone');
+
+        // --- SIMULATION STATE ---
+        let state = {
+            balanceWeight: 0.0,
+            isTared: false,
+            taredWeight: 0.0,
+            itemsOnBalance: [],
+            step: 0,
+            readings: [],
+            pipetteVolume: 1.0,
+            waterDensity: 0.9982,
+            isDragging: false,
+            draggedItem: null,
+            weighingBoatWater: 0.0,
+            pipetteHasWater: false,
+            isPipetteOverBeaker: false,
+            isPipetteOverBoat: false,
+        };
+
+        const originalPositions = new Map();
+        document.querySelectorAll('.draggable').forEach(item => {
+            originalPositions.set(item.id, { top: item.style.top, left: item.style.left, right: item.style.right, bottom: item.style.bottom });
+        });
+
+        // --- CORE FUNCTIONS ---
+
+        function updateBalanceDisplay() {
+            let displayWeight = state.balanceWeight;
+            if (state.isTared) {
+                displayWeight -= state.taredWeight;
+            }
+            const noise = (Math.random() - 0.5) * 0.0002;
+            balanceDisplay.textContent = (displayWeight + noise).toFixed(4);
+        }
+
+        function updateInstruction(text, step = state.step) {
+            state.step = step;
+            instructionText.textContent = text;
+            updateButtonStates();
+        }
+
+        function updateButtonStates() {
+            const hasItemOnBalance = state.itemsOnBalance.length > 0;
+            tareButton.disabled = !hasItemOnBalance || state.isTared;
+
+            const canAspirate = state.isPipetteOverBeaker && !state.pipetteHasWater && state.step >= 2;
+            const canDispense = state.isPipetteOverBoat && state.pipetteHasWater && state.isTared && state.step === 2;
+            plungerButton.disabled = !(canAspirate || canDispense);
+            plungerButton.title = canAspirate ? 'Aspirate Water' : (canDispense ? 'Dispense Water' : 'Move pipette to position');
+        }
+
+        function calculateResults() {
+            const n = state.readings.length;
+            if (n === 0) return;
+            const sum = state.readings.reduce((a, b) => a + b, 0);
+            const mean = sum / n;
+            const stdDev = n > 1 ? Math.sqrt(state.readings.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / (n - 1)) : 0;
+            const expectedWeight = state.pipetteVolume * state.waterDensity;
+            const accuracy = ((mean - expectedWeight) / expectedWeight) * 100;
+            const precision = (stdDev / mean) * 100;
+
+            document.getElementById('mean-value').textContent = mean.toFixed(4);
+            document.getElementById('std-dev-value').textContent = isNaN(stdDev) ? 'N/A' : stdDev.toFixed(4);
+            document.getElementById('accuracy-value').textContent = accuracy.toFixed(2);
+            document.getElementById('precision-value').textContent = isNaN(precision) ? 'N/A' : precision.toFixed(2);
+            
+            const verdictEl = document.getElementById('final-verdict');
+            if (Math.abs(accuracy) <= 0.6 && precision < 0.2) {
+                verdictEl.textContent = "PASS: Pipette is within tolerance.";
+                verdictEl.className = "font-bold mt-2 p-2 rounded-md bg-green-100 text-green-800";
+            } else {
+                verdictEl.textContent = "FAIL: Pipette is out of tolerance.";
+                verdictEl.className = "font-bold mt-2 p-2 rounded-md bg-red-100 text-red-800";
+            }
+            resultsPanel.classList.remove('hidden');
+        }
+
+        function resetSimulation() {
+            state = {
+                balanceWeight: 0.0,
+                isTared: false,
+                taredWeight: 0.0,
+                itemsOnBalance: [],
+                step: 0,
+                readings: [],
+                pipetteVolume: 1.0,
+                waterDensity: 0.9982,
+                isDragging: false,
+                draggedItem: null,
+                weighingBoatWater: 0.0,
+                pipetteHasWater: false,
+                isPipetteOverBeaker: false,
+                isPipetteOverBoat: false,
+            };
+
+            balanceDisplay.textContent = '0.0000';
+            readingsList.innerHTML = '';
+            dataPanel.classList.add('hidden');
+            resultsPanel.classList.add('hidden');
+            
+            weighingBoatLiquid.style.transform = 'scaleY(0)';
+            weighingBoatLiquid.style.opacity = '0';
+            pipetteTipLiquid.style.height = '0%';
+            pipetteBodyLiquid.style.height = '0%';
+
+            document.querySelectorAll('.draggable').forEach(item => {
+                if (balancePan.contains(item)) {
+                    itemsArea.appendChild(item);
+                }
+                const pos = originalPositions.get(item.id);
+                item.style.position = 'absolute';
+                item.style.top = pos.top;
+                item.style.left = pos.left;
+                item.style.right = pos.right;
+                item.style.bottom = pos.bottom;
+                item.style.transform = '';
+            });
+
+            updateInstruction('Welcome! Let\'s begin. Drag the empty weighing boat onto the balance pan.', 0);
+        }
+
+        // --- EVENT HANDLERS ---
+
+        tareButton.addEventListener('click', () => {
+            if (state.itemsOnBalance.length > 0 && !state.isTared) {
+                state.isTared = true;
+                state.taredWeight = state.balanceWeight; 
+                updateBalanceDisplay();
+
+                if (state.step === 1) {
+                    updateInstruction('Balance tared. Drag the pipette to the beaker to collect water.', 2);
+                } else if (state.step === 3) {
+                    const nextReadingNum = state.readings.length + 1;
+                    updateInstruction(`Balance tared. Drag pipette to beaker for reading #${nextReadingNum}.`, 2);
+                }
+            }
+        });
+
+        resetButton.addEventListener('click', resetSimulation);
+
+        plungerButton.addEventListener('click', () => {
+            if (plungerButton.disabled) return;
+
+            if (state.isPipetteOverBeaker && !state.pipetteHasWater) {
+                state.pipetteHasWater = true;
+                pipetteTipLiquid.style.height = '100%';
+                pipetteBodyLiquid.style.height = '100%';
+                updateInstruction('Water collected. Now, drag the pipette over the weighing boat.', 2);
+            } 
+            else if (state.isPipetteOverBoat && state.pipetteHasWater) {
+                const dispensedWeight = (state.pipetteVolume * state.waterDensity) + (Math.random() - 0.5) * 0.01;
+                state.balanceWeight += dispensedWeight;
+                state.weighingBoatWater += dispensedWeight;
+                state.pipetteHasWater = false;
+
+                pipetteTipLiquid.style.height = '0%';
+                pipetteBodyLiquid.style.height = '0%';
+                
+                const fillPercentage = Math.min(1, (state.readings.length + 1) / 5);
+                weighingBoatLiquid.style.opacity = '1';
+                weighingBoatLiquid.style.transform = `scaleY(${fillPercentage})`;
+
+                updateBalanceDisplay();
+
+                const currentReading = parseFloat(balanceDisplay.textContent);
+                state.readings.push(currentReading);
+                
+                const li = document.createElement('li');
+                li.textContent = `${currentReading.toFixed(4)} g`;
+                readingsList.appendChild(li);
+
+                calculateResults();
+
+                if (state.readings.length < 5) {
+                    updateInstruction(`Reading ${state.readings.length} recorded. Tare the balance again to prepare for the next measurement.`, 3);
+                    state.isTared = false;
+                } else {
+                    updateInstruction('Calibration complete! See the results panel for analysis.', 4);
+                }
+            }
+            updateButtonStates();
+        });
+        
+        // --- DRAG AND DROP LOGIC ---
+        function makeDraggable(element) {
+            let startX, startY, startLeft, startTop;
+
+            function onMouseDown(e) {
+                if (balancePan.contains(element)) return;
+                
+                state.isDragging = true;
+                state.draggedItem = element;
+                element.classList.add('dragging');
+                
+                const event = e.touches ? e.touches[0] : e;
+                startX = event.clientX;
+                startY = event.clientY;
+                startLeft = element.offsetLeft;
+                startTop = element.offsetTop;
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+                document.addEventListener('touchmove', onMouseMove, { passive: false });
+                document.addEventListener('touchend', onMouseUp);
+            }
+
+            function onMouseMove(e) {
+                if (!state.isDragging) return;
+                e.preventDefault();
+                
+                const event = e.touches ? e.touches[0] : e;
+                const dx = event.clientX - startX;
+                const dy = event.clientY - startY;
+
+                element.style.transform = `translate(${dx}px, ${dy}px)`;
+
+                if (element.id === 'pipette') {
+                    const pipetteRect = element.getBoundingClientRect();
+                    const beakerRect = beakerDropZone.getBoundingClientRect();
+                    const boatOnBalance = document.getElementById('weighing-boat');
+                    const boatRect = boatOnBalance.getBoundingClientRect();
+
+                    state.isPipetteOverBeaker = (pipetteRect.right > beakerRect.left && pipetteRect.left < beakerRect.right && pipetteRect.bottom > beakerRect.top && pipetteRect.top < beakerRect.bottom);
+                    beakerDropZone.classList.toggle('drop-zone-hover', state.isPipetteOverBeaker && !state.pipetteHasWater);
+                    
+                    state.isPipetteOverBoat = balancePan.contains(boatOnBalance) && (pipetteRect.right > boatRect.left && pipetteRect.left < boatRect.right && pipetteRect.bottom > boatRect.top && pipetteRect.top < boatRect.bottom);
+                    balancePan.classList.toggle('drop-zone-hover', state.isPipetteOverBoat && state.pipetteHasWater);
+
+                    updateButtonStates();
+                } else if (element.id === 'weighing-boat') {
+                    const panRect = balancePan.getBoundingClientRect();
+                    balancePan.classList.toggle('drop-zone-hover', (event.clientX > panRect.left && event.clientX < panRect.right && event.clientY > panRect.top && event.clientY < panRect.bottom));
+                }
+            }
+
+            function onMouseUp(e) {
+                if (!state.isDragging) return;
+                
+                const event = e.changedTouches ? e.changedTouches[0] : e;
+                const dx = event.clientX - startX;
+                const dy = event.clientY - startY;
+
+                element.style.transform = '';
+                element.style.left = `${startLeft + dx}px`;
+                element.style.top = `${startTop + dy}px`;
+
+                element.classList.remove('dragging');
+                beakerDropZone.classList.remove('drop-zone-hover');
+                balancePan.classList.remove('drop-zone-hover');
+
+                const panRect = balancePan.getBoundingClientRect();
+                if (element.id === 'weighing-boat' && event.clientX > panRect.left && event.clientX < panRect.right && event.clientY > panRect.top && event.clientY < panRect.bottom) {
+                    dropItemOnBalance(element);
+                }
+
+                state.isDragging = false;
+                state.draggedItem = null;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+                document.removeEventListener('touchmove', onMouseMove);
+                document.removeEventListener('touchend', onMouseUp);
+            }
+            
+            element.addEventListener('mousedown', onMouseDown);
+            element.addEventListener('touchstart', onMouseDown);
+        }
+
+        function dropItemOnBalance(item) {
+            if (state.itemsOnBalance.some(i => i.id === item.id)) return;
+
+            const weight = parseFloat(item.dataset.weight);
+            state.itemsOnBalance.push({ id: item.id, weight: weight });
+            state.balanceWeight += weight;
+            
+            item.style.left = '50%';
+            item.style.top = '50%';
+            item.style.transform = 'translate(-50%, -50%)';
+            balancePan.appendChild(item);
+            
+            updateBalanceDisplay();
+
+            if (item.id === 'weighing-boat' && state.step === 0) {
+                updateInstruction('Weighing boat placed. Now, press the "Tare" button to zero the balance.', 1);
+                dataPanel.classList.remove('hidden');
+            }
+        }
+
+        // --- INITIALIZATION ---
+        resetSimulation();
+        document.querySelectorAll('.draggable').forEach(makeDraggable);
+    });
+    </script>
+
+</body>
+</html>
