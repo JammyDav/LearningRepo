@@ -1,36 +1,102 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Interactive Learning Hub</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 2rem;
-    }
-    ul {
-      list-style-type: none;
-      padding: 0;
-    }
-    li {
-      margin: 1rem 0;
-    }
-    a {
-      text-decoration: none;
-      color: #007bff;
-      font-size: 1.2rem;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Learning Hub</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Font alternatives for Calibre (Poppins) and Financier Display (Playfair Display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for CBRE branding and VR-friendly interactions */
+        body {
+            font-family: 'Poppins', sans-serif; /* Using Poppins as a free alternative to Calibre */
+            background-color: #f8f9fa; /* A very light, clean background to ensure content readability */
+            color: #435254; /* CBRE Dark Grey for body text */
+        }
+        /* Using Playfair Display as a free alternative to Financier Display for headings */
+        h1, h2 {
+            font-family: 'Playfair Display', serif; 
+            color: #435254; /* CBRE Dark Grey for headings */
+        }
+        /* Style for the main container to center content */
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        /* Card styles for each link, incorporating CBRE Light Grey */
+        .activity-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid #CAD1D3; /* CBRE Light Grey border */
+        }
+        /* Hover effect for cards using a shadow tinted with CBRE Green */
+        .activity-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 63, 45, 0.1), 0 4px 6px -2px rgba(0, 63, 45, 0.05);
+        }
+    </style>
 </head>
-<body>
-  <h1>Interactive Learning Hub</h1>
-  <p>Select an activity:</p>
-  <ul>
-    <li><a href="MassSpectrum.html">Mass Filter Simulator</a></li>
-    <li><a href="ionization-quiz.html">Ionization Quiz</a></li>
-    <li><a href="detector-demo.html">Detector Animation</a></li>
-  </ul>
+<body class="antialiased">
+
+    <div class="main-container">
+
+        <!-- Header Section -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold mb-2">Interactive Learning Hub</h1>
+            <p class="text-lg md:text-xl">Select an activity to begin your immersive learning experience.</p>
+        </header>
+
+        <!-- Main Content: Activity Links -->
+        <main class="w-full max-w-4xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+                <!-- Card 1: Mass Spectrum Explorer -->
+                <a href="MassSpectrum.html" class="activity-card bg-white rounded-lg p-8 block text-center no-underline">
+                    <div class="mb-4">
+                        <!-- Icon using CBRE Green -->
+                        <svg class="w-16 h-16 mx-auto text-[#003F2D]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h2 class="text-xl font-semibold mb-2">Mass Spectrum Explorer</h2>
+                    <p>Analyze and interpret mass spectrometry data.</p>
+                </a>
+
+                <!-- Card 2: XR Test -->
+                <a href="XRtest.html" class="activity-card bg-white rounded-lg p-8 block text-center no-underline">
+                    <div class="mb-4">
+                        <!-- Icon using CBRE Green -->
+                        <svg class="w-16 h-16 mx-auto text-[#003F2D]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c.252 0 .484.102.659.277l4.5 4.5a2.25 2.25 0 010 3.182l-4.5 4.5A2.25 2.25 0 019.75 16.896V11.182M14.25 14.5l4.5-4.5a2.25 2.25 0 000-3.182l-4.5-4.5a2.25 2.25 0 00-2.232 1.072M14.25 14.5L12 12.25" opacity="0.5"></path><path stroke-linecap="round" stroke-linejoin="round" d="M3 10.5a2.25 2.25 0 114.5 0 2.25 2.25 0 01-4.5 0zM16.5 10.5a2.25 2.25 0 114.5 0 2.25 2.25 0 01-4.5 0z"></path></svg>
+                    </div>
+                    <h2 class="text-xl font-semibold mb-2">XR Test</h2>
+                    <p>Experience our latest developments in Extended Reality.</p>
+                </a>
+
+                <!-- Card 3: Pipette Calibration Simulation -->
+                <a href="PipetteCal.html" class="activity-card bg-white rounded-lg p-8 block text-center no-underline">
+                    <div class="mb-4">
+                        <!-- Icon using CBRE Green -->
+                         <svg class="w-16 h-16 mx-auto text-[#003F2D]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <h2 class="text-xl font-semibold mb-2">Pipette Calibration</h2>
+                    <p>Learn and practice pipette calibration techniques.</p>
+                </a>
+
+            </div>
+        </main>
+
+        <!-- Footer Section -->
+        <footer class="text-center mt-12 text-opacity-75" style="color: #435254;">
+            <p>&copy; 2024 Interactive Learning Hub. All Rights Reserved.</p>
+        </footer>
+
+    </div>
+
 </body>
 </html>
+
