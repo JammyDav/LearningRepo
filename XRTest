@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebXR Ball Throw</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+</head>
+<body>
+    <a-scene physics="driver: local; gravity: 0 -9.8 0;">
+
+        <a-assets>
+            <img id="groundTexture" src="https://cdn.jsdelivr.net/gh/aframevr/aframe-registry@master/assets/images/textures/wood.jpg">
+        </a-assets>
+
+        <a-plane 
+            static-body 
+            position="0 0 -4" 
+            rotation="-90 0 0" 
+            width="20" 
+            height="20" 
+            src="#groundTexture" 
+            repeat="5 5">
+        </a-plane>
+
+        <a-sky color="#ECECEC"></a-sky>
+
+        <a-entity id="rig" position="0 0.5 0">
+            <a-camera></a-camera>
+            <a-entity id="rightHand" oculus-touch-controls="hand: right"></a-entity>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        // Wait for the scene and its components to load.
+        document.addEventListener('DOMContentLoaded', function () {
+            const sceneEl = document.querySelector('a-scene');
+            const rightHand = document.getElementById('rightHand');
+
+            // Listen for the 'triggerdown' event on the right controller
+            rightHand.addEventListener('triggerdown', function () {
+                // Create a new ball (a-sphere) entity
+                const ball = document.createElement('a-sphere');
+                
+                // Set its properties
+                ball.setAttribute('radius', 0.1);
+                ball.setAttribute('color', `#${Math.random().toString(16).slice(2, 8).toUpperCase()}`); // Random color!
+                
+                // Make it a physical object
+                ball.setAttribute('dynamic-body', {
+                    shape: 'sphere',
+                    mass: 0.1
+                });
+
+                // Get the controller's current world position and set the ball's position
+                const controllerPos = new THREE.Vector3();
+                rightHand.object3D.getWorldPosition(controllerPos);
+                ball.setAttribute('position', controllerPos);
+
+                // Get the controller's direction to calculate launch velocity
+                const controllerDir = new THREE.Vector3(0, 0, -1); // Start with forward direction
+                const quaternion = new THREE.Quaternion();
+                rightHand.object3D.getWorldQuaternion(quaternion);
+                controllerDir.applyQuaternion(quaternion); // Apply controller's rotation
+
+                // We must wait for the physics body to be loaded before applying velocity
+                ball.addEventListener('body-loaded', function () {
+                    const force = 10; // The power of the throw
+                    const velocity = controllerDir.multiplyScalar(force);
+                    ball.body.velocity.set(velocity.x, velocity.y, velocity.z);
+                });
+                
+                // Add the ball to the scene
+                sceneEl.appendChild(ball);
+            });
+        });
+    </script>
+</body>
+</html>
