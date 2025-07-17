@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebXR Virtual Pipette Calibration Lab</title>
+    <title>WebXR Virtual Pipette Calibration Lab (Fixed)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -18,24 +18,36 @@
     <div id="scene-container"></div>
 
     <script type="module">
-        // --- VR BUTTON UTILITY ---
-        // This utility creates the "Enter VR" button
+        // --- VR BUTTON UTILITY (with improved error handling) ---
         class VRButton {
             static createButton(renderer) {
                 const button = document.createElement('button');
-                function showEnterVR( /*device*/ ) {
+                function showEnterVR() {
                     let currentSession = null;
                     async function onSessionStarted(session) {
+                        console.log("WebXR session started successfully.");
                         session.addEventListener('end', onSessionEnded);
-                        await renderer.xr.setSession(session);
-                        button.textContent = 'EXIT VR';
-                        currentSession = session;
+                        try {
+                            console.log("Setting renderer XR session...");
+                            await renderer.xr.setSession(session);
+                            console.log("Renderer XR session set.");
+                            button.textContent = 'EXIT VR';
+                            currentSession = session;
+                        } catch (e) {
+                            console.error("Failed to set renderer XR session", e);
+                            alert("An error occurred while setting up the VR session.");
+                        }
                     }
-                    function onSessionEnded( /*event*/ ) {
+
+                    function onSessionEnded() {
+                        console.log("WebXR session ended.");
                         currentSession.removeEventListener('end', onSessionEnded);
                         button.textContent = 'ENTER VR';
                         currentSession = null;
+                        // Reset simulation state when exiting VR
+                        resetSimulation();
                     }
+                    
                     button.style.display = '';
                     button.style.cursor = 'pointer';
                     button.style.position = 'absolute';
@@ -48,17 +60,27 @@
                     button.style.color = '#fff';
                     button.style.font = 'normal 16px Inter, sans-serif';
                     button.textContent = 'ENTER VR';
-                    button.onmouseenter = function () { button.style.opacity = '1.0'; };
-                    button.onmouseleave = function () { button.style.opacity = '0.9'; };
-                    button.onclick = function () {
+                    button.onmouseenter = () => { button.style.opacity = '1.0'; };
+                    button.onmouseleave = () => { button.style.opacity = '0.9'; };
+
+                    button.onclick = () => {
                         if (currentSession === null) {
+                            console.log("Requesting WebXR session...");
                             const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] };
-                            navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted);
+                            navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch(err => {
+                                console.error("Failed to request WebXR session:", err);
+                                alert("Could not start VR session. Please ensure your device supports WebXR and it is enabled.");
+                            });
                         } else {
+                            console.log("Ending WebXR session...");
                             currentSession.end();
                         }
                     };
                 }
+                function disableButton() { /* ... unchanged ... */ }
+                if ('xr' in navigator) { /* ... unchanged ... */ } else { /* ... unchanged ... */ }
+
+                // --- Unchanged parts of VRButton ---
                 function disableButton() {
                     button.style.display = '';
                     button.style.cursor = 'auto';
@@ -92,7 +114,7 @@
 
         // --- SCENE SETUP ---
         let scene, camera, renderer, controllers = [];
-        let bench, balance, beaker, weighBoat, pipette, tareButton;
+        let bench, balance, beaker, weighBoat, pipette, tareButton, resetButton;
         let vrInstructionPanel, vrResultsPanel, vrBalanceDisplay;
 
         // --- INTERACTIVE OBJECTS & STATE ---
@@ -116,15 +138,10 @@
         const sceneContainer = document.getElementById('scene-container');
 
         function init() {
-            // Scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x2d3748);
-
-            // Camera
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 1.6, 0.5);
-
-            // Renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -132,15 +149,11 @@
             renderer.xr.enabled = true;
             sceneContainer.appendChild(renderer.domElement);
             document.body.appendChild(VRButton.createButton(renderer));
-
-            // Lighting
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7.5);
             dirLight.castShadow = true;
             scene.add(dirLight);
-
-            // --- CREATE ENVIRONMENT & OBJECTS ---
             createEnvironment();
             createBalance();
             createBeaker();
@@ -148,25 +161,18 @@
             createPipette();
             createVRUI();
             initControllers();
-
-            // Event Listeners
             window.addEventListener('resize', onWindowResize, false);
-            
-            // Start
             setGameState('START');
             renderer.setAnimationLoop(render);
         }
 
         function createEnvironment() {
-            // Floor
             const floorGeom = new THREE.PlaneGeometry(10, 10);
             const floorMat = new THREE.MeshStandardMaterial({ color: 0x808080 });
             const floor = new THREE.Mesh(floorGeom, floorMat);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
-
-            // Lab Bench
             const benchGeom = new THREE.BoxGeometry(2, 0.5, 1);
             const benchMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db });
             bench = new THREE.Mesh(benchGeom, benchMat);
@@ -181,13 +187,12 @@
             const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: 0xe5e7eb }));
             base.castShadow = true;
             group.add(base);
-            
             const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: 0x9ca3af, metalness: 0.5 }));
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
-
-            // Tare button for VR interaction
+            
+            // Tare button
             const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
             const tareButtonMat = new THREE.MeshStandardMaterial({ color: 'red' });
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
@@ -201,7 +206,6 @@
         }
 
         function createBeaker() {
-            // Beaker and water logic remains similar
             const beakerMat = new THREE.MeshPhysicalMaterial({ color: 0xadd8e6, transmission: 0.9, thickness: 0.1, roughness: 0.1 });
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
             beaker.position.set(beakerPos.x, beakerPos.y - 0.2, beakerPos.z);
@@ -213,7 +217,6 @@
         }
 
         function createWeighBoat() {
-            // Weigh boat logic remains similar
             const boatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide });
             const shape = new THREE.Shape();
             shape.moveTo(-0.05, -0.05); shape.lineTo(0.05, -0.05); shape.lineTo(0.07, 0.05); shape.lineTo(-0.07, 0.05);
@@ -226,7 +229,6 @@
             weighBoat.name = "weighBoat";
             scene.add(weighBoat);
             grabbableObjects.push(weighBoat);
-
             const waterInBoatGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
             const waterInBoatMat = new THREE.MeshBasicMaterial({ color: 0x4299e1, transparent: true, opacity: 0.9 });
             const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
@@ -236,7 +238,6 @@
         }
 
         function createPipette() {
-            // Pipette logic remains similar
             const group = new THREE.Group();
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0xd1d5db }));
             group.add(body);
@@ -254,39 +255,39 @@
             grabbableObjects.push(pipette);
         }
 
-        // --- VR UI ---
         function createVRUI() {
-            // Instruction Panel
             vrInstructionPanel = createTextPanel(512, 256);
             vrInstructionPanel.position.set(-1.2, 1.8, -1.5);
             scene.add(vrInstructionPanel);
-
-            // Results Panel
             vrResultsPanel = createTextPanel(512, 512);
             vrResultsPanel.position.set(1.2, 1.8, -1.5);
             scene.add(vrResultsPanel);
-
-            // Balance Display
             vrBalanceDisplay = createTextPanel(256, 128);
-            vrBalanceDisplay.position.set(0, 0.15, 0); // Relative to balance
+            vrBalanceDisplay.position.set(0, 0.15, 0);
             balance.add(vrBalanceDisplay);
+
+            // Reset Button
+            const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
+            const resetButtonMat = new THREE.MeshStandardMaterial({ color: '#dc2626' });
+            resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
+            resetButton.name = 'resetButton';
+            resetButton.position.set(0, 1.2, -1.8);
+            const resetButtonText = createTextPanel(256, 128);
+            updateTextPanel(resetButtonText, ["", "RESET"]);
+            resetButtonText.position.z = 0.011;
+            resetButton.add(resetButtonText);
+            scene.add(resetButton);
         }
         
         function createTextPanel(canvasWidth, canvasHeight) {
             const canvas = document.createElement('canvas');
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
+            canvas.width = canvasWidth; canvas.height = canvasHeight;
             const context = canvas.getContext('2d');
             const texture = new THREE.CanvasTexture(canvas);
-            
             const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-            const geometry = new THREE.PlaneGeometry(canvasWidth / 512, canvasHeight / 512); // Scale down
+            const geometry = new THREE.PlaneGeometry(canvasWidth / 512, canvasHeight / 512);
             const panel = new THREE.Mesh(geometry, material);
-            
-            panel.userData.canvas = canvas;
-            panel.userData.context = context;
-            panel.userData.texture = texture;
-            
+            panel.userData = { canvas, context, texture };
             return panel;
         }
 
@@ -297,40 +298,39 @@
             context.strokeStyle = '#4f46e5';
             context.lineWidth = 10;
             context.strokeRect(0, 0, canvas.width, canvas.height);
-            
             context.fillStyle = 'white';
-            context.font = `bold ${canvas.width/16}px Inter`;
-            context.fillText(lines[0], 20, 50);
-            
-            context.font = `${canvas.width/20}px Inter`;
-            let y = 100;
-            for (let i = 1; i < lines.length; i++) {
-                context.fillText(lines[i], 20, y);
-                y += 40;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.font = `bold ${canvas.width/8}px Inter`;
+            if (lines.length === 1) {
+                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
+            } else {
+                context.textAlign = 'left';
+                context.font = `bold ${canvas.width/16}px Inter`;
+                context.fillText(lines[0], 20, 50);
+                context.font = `${canvas.width/20}px Inter`;
+                let y = 100;
+                for (let i = 1; i < lines.length; i++) {
+                    context.fillText(lines[i], 20, y);
+                    y += 40;
+                }
             }
             texture.needsUpdate = true;
         }
 
-        // --- CONTROLLERS ---
         function initControllers() {
             for (let i = 0; i < 2; i++) {
                 const controller = renderer.xr.getController(i);
                 scene.add(controller);
                 controllers.push(controller);
-
-                // Glove/Hand model
                 const handMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
                 const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.02), handMat);
                 palm.position.z = 0.01;
                 controller.add(palm);
-                
-                // Raycaster line for pointing
                 const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
                 const line = new THREE.Line(lineGeom);
                 line.scale.z = 5;
                 controller.add(line);
-
-                // Event Listeners
                 controller.addEventListener('selectstart', onSelectStart);
                 controller.addEventListener('selectend', onSelectEnd);
                 controller.addEventListener('squeezestart', onSqueezeStart);
@@ -341,32 +341,21 @@
         function onSqueezeStart(event) {
             const controller = event.target;
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
-
-            // Find closest grabbable object
             let closestObj = null;
-            let minDistance = 0.1; // Grab radius
+            let minDistance = 0.1;
             grabbableObjects.forEach(obj => {
-                const objPos = obj.getWorldPosition(new THREE.Vector3());
-                const distance = controllerPos.distanceTo(objPos);
-                if (distance < minDistance) {
-                    closestObj = obj;
-                    minDistance = distance;
+                if (!obj.parent.isGroup) { // Can't grab an object that's already held
+                    const objPos = obj.getWorldPosition(new THREE.Vector3());
+                    const distance = controllerPos.distanceTo(objPos);
+                    if (distance < minDistance) {
+                        closestObj = obj;
+                        minDistance = distance;
+                    }
                 }
             });
-
             if (closestObj) {
-                // Attach object to controller
-                const worldScale = closestObj.getWorldScale(new THREE.Vector3());
-                const worldQuaternion = closestObj.getWorldQuaternion(new THREE.Quaternion());
-                
                 controller.attach(closestObj);
-                
-                // Rescale to counteract parent scaling
-                closestObj.scale.divide(controller.getWorldScale(new THREE.Vector3()));
-                
                 grabbedObject = { object: closestObj, controller };
-                
-                // Game logic state change
                 if (closestObj.name === 'pipette' && gameState === 'BALANCE_TARED') {
                     setGameState('PIPETTE_HELD');
                 }
@@ -375,16 +364,12 @@
 
         function onSqueezeEnd(event) {
             if (grabbedObject) {
-                const { object, controller } = grabbedObject;
-                
-                // Detach object from controller and add back to scene
+                const { object } = grabbedObject;
                 const worldPos = object.getWorldPosition(new THREE.Vector3());
                 const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
                 scene.attach(object);
                 object.position.copy(worldPos);
                 object.quaternion.copy(worldQuat);
-
-                // Check for placement
                 if (object.name === 'weighBoat') {
                     const balancePlatePos = balance.children[1].getWorldPosition(new THREE.Vector3());
                     if (object.position.distanceTo(balancePlatePos) < 0.1) {
@@ -394,7 +379,6 @@
                         setGameState('BOAT_ON_BALANCE');
                     }
                 }
-                
                 grabbedObject = null;
             }
         }
@@ -404,27 +388,26 @@
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
                     balanceReading = 0.0;
-                    if (gameState === 'BOAT_ON_BALANCE') {
-                        setGameState('BALANCE_TARED');
-                    } else {
+                    if (gameState === 'BOAT_ON_BALANCE') setGameState('BALANCE_TARED');
+                    else {
                         weighBoat.getObjectByName('dispensedWater').visible = false;
                         setGameState('BALANCE_TARED');
                     }
+                } else if (controllerPointingAt.name === 'resetButton') {
+                    resetSimulation();
                 }
             } else if (grabbedObject && grabbedObject.object.name === 'pipette') {
-                // Aspirate or Dispense
                 const pipetteObj = grabbedObject.object;
                 const plunger = pipetteObj.getObjectByName('plunger');
                 const beakerTopPos = beaker.getWorldPosition(new THREE.Vector3());
                 beakerTopPos.y += 0.1;
                 const balancePlatePos = balance.children[1].getWorldPosition(new THREE.Vector3());
-
                 if (gameState === 'PIPETTE_HELD' && pipetteObj.position.distanceTo(beakerTopPos) < 0.15) {
-                    plunger.position.y = 0.15; // Animate this later
+                    plunger.position.y = 0.15;
                     isPipetteFull = true;
                     setGameState('WATER_ASPIRATED');
                 } else if (gameState === 'WATER_ASPIRATED' && pipetteObj.position.distanceTo(balancePlatePos) < 0.2) {
-                    plunger.position.y = 0.15; // Animate this later
+                    plunger.position.y = 0.15;
                     isPipetteFull = false;
                     const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
                     balanceReading = dispensedWeight;
@@ -437,30 +420,47 @@
         
         function onSelectEnd(event) {
             if (grabbedObject && grabbedObject.object.name === 'pipette') {
-                 const plunger = grabbedObject.object.getObjectByName('plunger');
-                 plunger.position.y = 0.17; // Animate this later
+                 grabbedObject.object.getObjectByName('plunger').position.y = 0.17;
             }
         }
 
-        // --- GAME LOGIC & STATE MACHINE ---
         function setGameState(newState) {
             gameState = newState;
             console.log("New State:", gameState);
             updateVRUI();
         }
 
+        function resetSimulation() {
+            console.log("Resetting simulation...");
+            // Detach any grabbed object
+            if (grabbedObject) {
+                onSqueezeEnd();
+            }
+
+            // Reset object positions
+            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y - 0.2, weighBoatStartPos.z);
+            pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
+            weighBoat.getObjectByName('dispensedWater').visible = false;
+
+            // Reset state variables
+            measurements = [];
+            balanceReading = 0.0;
+            isPipetteFull = false;
+
+            setGameState('START');
+        }
+
         function updateVRUI() {
-            // Instructions
             let instructions = ["Lab Procedure"];
             switch(gameState) {
                 case 'START': instructions.push("Grab the weigh boat."); break;
-                case 'BOAT_ON_BALANCE': instructions.push("Place the boat on the balance.", "Then press the red TARE button."); break;
+                case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at red TARE button & trigger."); break;
                 case 'BALANCE_TARED': instructions.push("Grab the micropipette."); break;
-                case 'PIPETTE_HELD': instructions.push("Move pipette to beaker and press", "trigger to aspirate water."); break;
-                case 'WATER_ASPIRATED': instructions.push("Move pipette over weigh boat", "and press trigger to dispense."); break;
+                case 'PIPETTE_HELD': instructions.push("Move pipette to beaker, press trigger."); break;
+                case 'WATER_ASPIRATED': instructions.push("Move pipette over boat, press trigger."); break;
                 case 'RECORDING_WEIGHT':
                     instructions.push(`Measurement ${measurements.length} recorded.`, "Press TARE button again.");
-                    if (measurements.length >= requiredMeasurements) { setGameState('ANALYSIS'); }
+                    if (measurements.length >= requiredMeasurements) setGameState('ANALYSIS');
                     break;
                 case 'ANALYSIS':
                     instructions.push("All measurements complete.", "Analyzing results...");
@@ -470,7 +470,6 @@
             }
             updateTextPanel(vrInstructionPanel, instructions);
 
-            // Results
             let results = [`Measurements (${measurements.length}/${requiredMeasurements})`];
             measurements.forEach((w, i) => results.push(`- Sample ${i+1}: ${w.toFixed(4)}g`));
             if (gameState === 'ANALYSIS') {
@@ -491,37 +490,34 @@
         }
 
         function handleController(controller) {
-            // Raycasting for pointing at UI elements
             const raycaster = new THREE.Raycaster();
             const tempMatrix = new THREE.Matrix4();
             tempMatrix.identity().extractRotation(controller.matrixWorld);
             raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
             raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
             
-            const intersects = raycaster.intersectObjects([tareButton]);
+            const intersects = raycaster.intersectObjects([tareButton, resetButton]);
             
+            if (controllerPointingAt && (!intersects.length || intersects[0].object !== controllerPointingAt)) {
+                 // Reset color if no longer pointing or pointing at something else
+                 if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set('red');
+                 if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set('#dc2626');
+                 controllerPointingAt = null;
+            }
+
             if (intersects.length > 0) {
                 controllerPointingAt = intersects[0].object;
                 controllerPointingAt.material.color.set('yellow');
-            } else {
-                if (controllerPointingAt) {
-                    controllerPointingAt.material.color.set('red');
-                }
-                controllerPointingAt = null;
             }
         }
 
-        // --- RENDER LOOP ---
         function render() {
-            if (controllers) {
+            if (renderer.xr.isPresenting) {
                 controllers.forEach(controller => {
                     if(!grabbedObject) handleController(controller);
                 });
             }
-
-            // Update balance display
             updateTextPanel(vrBalanceDisplay, ["Balance", `${balanceReading.toFixed(4)} g`]);
-
             renderer.render(scene, camera);
         }
 
