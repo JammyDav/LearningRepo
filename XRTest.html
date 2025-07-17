@@ -1,128 +1,537 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>WebXR Ball Throw (Dual Hand)</title>
-    <meta name="description" content="An interactive WebXR experience where you can throw balls with either VR controller.">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- A-Frame Core: The main library for creating WebXR scenes -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- A-Frame Physics System: Adds physics capabilities like gravity and collisions -->
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+    <title>WebXR Virtual Pipette Calibration Lab</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
+        #scene-container { width: 100vw; height: 100vh; }
+        #vr-button { position: absolute; bottom: 20px; right: 20px; }
+    </style>
 </head>
-<body>
-    <!-- The a-scene component is the root of all A-Frame entities.
-         We enable the physics system here and set a global gravity. -->
-    <a-scene physics="driver: local; gravity: 0 -9.8 0;">
+<body class="bg-zinc-900 text-white">
 
-        <!-- =================================================
-             ASSETS - Pre-load textures for better performance 
-             ================================================= -->
-        <a-assets>
-            <img id="groundTexture" src="https://cdn.jsdelivr.net/gh/aframevr/aframe-registry@master/assets/images/textures/wood.jpg" crossorigin="anonymous">
-            <img id="skyTexture" src="https://cdn.aframe.io/a-painter/images/sky.jpg" crossorigin="anonymous">
-        </a-assets>
+    <div id="scene-container"></div>
 
-        <!-- =================================================
-             ENVIRONMENT
-             ================================================= -->
-        <!-- Ground Plane -->
-        <a-plane 
-            static-body 
-            position="0 0 -4" 
-            rotation="-90 0 0" 
-            width="30" 
-            height="30" 
-            src="#groundTexture" 
-            repeat="10 10">
-        </a-plane>
-
-        <!-- Background Sky -->
-        <a-sky src="#skyTexture"></a-sky>
-
-        <!-- Lighting -->
-        <a-light type="ambient" color="#444"></a-light>
-        <a-light type="directional" position="-1 1 2" color="#FFF"></a-light>
-
-
-        <!-- =================================================
-             PLAYER AND CONTROLLERS (UPDATED)
-             ================================================= -->
-        <a-entity id="rig" position="0 1.6 0">
-            <a-camera></a-camera>
-            
-            <!-- Left Hand Controller -->
-            <a-entity id="leftHand" oculus-touch-controls="hand: left"></a-entity>
-            
-            <!-- Right Hand Controller -->
-            <a-entity id="rightHand" oculus-touch-controls="hand: right"></a-entity>
-        </a-entity>
-
-    </a-scene>
-
-    <!-- =================================================
-         JAVASCRIPT LOGIC (UPDATED)
-         ================================================= -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const sceneEl = document.querySelector('a-scene');
-            const leftHand = document.getElementById('leftHand');
-            const rightHand = document.getElementById('rightHand');
-
-            // --- Generic function to handle ball throwing for EITHER hand ---
-            // It now accepts the controller element ('handEl') as an argument.
-            function throwBall(handEl) {
-                // 1. Create a new ball (a-sphere) entity dynamically.
-                const ball = document.createElement('a-sphere');
-                
-                // 2. Set its visual properties.
-                ball.setAttribute('radius', 0.1);
-                // Give it a random hex color!
-                ball.setAttribute('color', `#${Math.random().toString(16).slice(2, 8).toUpperCase()}`);
-                
-                // 3. Make it a physical object.
-                ball.setAttribute('dynamic-body', {
-                    shape: 'sphere',
-                    mass: 0.15 // A bit of weight.
-                });
-
-                // 4. Position the ball at the controller's location.
-                const controllerPos = new THREE.Vector3();
-                // Use the passed-in hand element ('handEl') to get the world position.
-                handEl.object3D.getWorldPosition(controllerPos);
-                ball.setAttribute('position', controllerPos);
-
-                // 5. Calculate the launch velocity based on the controller's direction.
-                const controllerDir = new THREE.Vector3();
-                // Use the passed-in hand element ('handEl') to get the world direction.
-                handEl.object3D.getWorldDirection(controllerDir);
-                
-                // We must wait for the physics body to be initialized before applying forces.
-                ball.addEventListener('body-loaded', function () {
-                    const force = 10; // The power of the throw.
-                    // The direction vector points "out of the back" of the controller, so we negate it to shoot forward.
-                    const velocity = controllerDir.multiplyScalar(-force); 
-                    
-                    // Apply the calculated velocity to the ball's physics body.
-                    ball.body.velocity.set(velocity.x, velocity.y, velocity.z);
-                });
-                
-                // 6. Add the newly created ball to the scene.
-                sceneEl.appendChild(ball);
-
-                // 7. Optional: Remove the ball after some time to keep the scene clean.
-                setTimeout(() => {
-                    if (ball.parentNode) {
-                        ball.parentNode.removeChild(ball);
+    <script type="module">
+        // --- VR BUTTON UTILITY ---
+        // This utility creates the "Enter VR" button
+        class VRButton {
+            static createButton(renderer) {
+                const button = document.createElement('button');
+                function showEnterVR( /*device*/ ) {
+                    let currentSession = null;
+                    async function onSessionStarted(session) {
+                        session.addEventListener('end', onSessionEnded);
+                        await renderer.xr.setSession(session);
+                        button.textContent = 'EXIT VR';
+                        currentSession = session;
                     }
-                }, 10000); // Remove after 10 seconds.
+                    function onSessionEnded( /*event*/ ) {
+                        currentSession.removeEventListener('end', onSessionEnded);
+                        button.textContent = 'ENTER VR';
+                        currentSession = null;
+                    }
+                    button.style.display = '';
+                    button.style.cursor = 'pointer';
+                    button.style.position = 'absolute';
+                    button.style.right = '20px';
+                    button.style.bottom = '20px';
+                    button.style.padding = '12px 24px';
+                    button.style.border = '1px solid #fff';
+                    button.style.borderRadius = '4px';
+                    button.style.background = 'rgba(0,0,0,0.5)';
+                    button.style.color = '#fff';
+                    button.style.font = 'normal 16px Inter, sans-serif';
+                    button.textContent = 'ENTER VR';
+                    button.onmouseenter = function () { button.style.opacity = '1.0'; };
+                    button.onmouseleave = function () { button.style.opacity = '0.9'; };
+                    button.onclick = function () {
+                        if (currentSession === null) {
+                            const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'] };
+                            navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted);
+                        } else {
+                            currentSession.end();
+                        }
+                    };
+                }
+                function disableButton() {
+                    button.style.display = '';
+                    button.style.cursor = 'auto';
+                    button.style.right = '20px';
+                    button.style.bottom = '20px';
+                    button.textContent = 'VR NOT SUPPORTED';
+                    button.onmouseenter = null;
+                    button.onmouseleave = null;
+                    button.onclick = null;
+                }
+                if ('xr' in navigator) {
+                    button.id = 'VRButton';
+                    navigator.xr.isSessionSupported('immersive-vr').then(function (supported) {
+                        supported ? showEnterVR() : disableButton();
+                    });
+                    return button;
+                } else {
+                    const message = document.createElement('a');
+                    if (window.isSecureContext === false) {
+                        message.href = document.location.href.replace(/^http:/, 'https:');
+                        message.innerHTML = 'WEBXR NEEDS HTTPS'; 
+                    } else {
+                        message.href = 'https://immersiveweb.dev/';
+                        message.innerHTML = 'WEBXR NOT AVAILABLE';
+                    }
+                    message.style.textDecoration = 'none';
+                    return message;
+                }
+            }
+        }
+
+        // --- SCENE SETUP ---
+        let scene, camera, renderer, controllers = [];
+        let bench, balance, beaker, weighBoat, pipette, tareButton;
+        let vrInstructionPanel, vrResultsPanel, vrBalanceDisplay;
+
+        // --- INTERACTIVE OBJECTS & STATE ---
+        const grabbableObjects = [];
+        let grabbedObject = null;
+        let controllerPointingAt = null;
+
+        const benchPos = { x: 0, y: 0.8, z: -1 };
+        const balancePos = { x: -0.5, y: benchPos.y + 0.25, z: benchPos.z };
+        const beakerPos = { x: 0.5, y: benchPos.y + 0.15, z: benchPos.z };
+        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.06, z: benchPos.z + 0.5 };
+        const pipetteStartPos = { x: 0, y: benchPos.y + 0.4, z: benchPos.z - 0.2 };
+
+        let gameState = 'INIT';
+        let measurements = [];
+        const requiredMeasurements = 5;
+        let balanceReading = 0.0;
+        let isPipetteFull = false;
+
+        // --- DOM ELEMENTS ---
+        const sceneContainer = document.getElementById('scene-container');
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x2d3748);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.6, 0.5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.xr.enabled = true;
+            sceneContainer.appendChild(renderer.domElement);
+            document.body.appendChild(VRButton.createButton(renderer));
+
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7.5);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // --- CREATE ENVIRONMENT & OBJECTS ---
+            createEnvironment();
+            createBalance();
+            createBeaker();
+            createWeighBoat();
+            createPipette();
+            createVRUI();
+            initControllers();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // Start
+            setGameState('START');
+            renderer.setAnimationLoop(render);
+        }
+
+        function createEnvironment() {
+            // Floor
+            const floorGeom = new THREE.PlaneGeometry(10, 10);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x808080 });
+            const floor = new THREE.Mesh(floorGeom, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Lab Bench
+            const benchGeom = new THREE.BoxGeometry(2, 0.5, 1);
+            const benchMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db });
+            bench = new THREE.Mesh(benchGeom, benchMat);
+            bench.position.set(benchPos.x, benchPos.y, benchPos.z);
+            bench.castShadow = true;
+            bench.receiveShadow = true;
+            scene.add(bench);
+        }
+
+        function createBalance() {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: 0xe5e7eb }));
+            base.castShadow = true;
+            group.add(base);
+            
+            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: 0x9ca3af, metalness: 0.5 }));
+            plate.position.y = 0.055;
+            plate.castShadow = true;
+            group.add(plate);
+
+            // Tare button for VR interaction
+            const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
+            const tareButtonMat = new THREE.MeshStandardMaterial({ color: 'red' });
+            tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
+            tareButton.name = 'tareButton';
+            tareButton.position.set(0.1, 0.055, 0.08);
+            group.add(tareButton);
+
+            balance = group;
+            balance.position.set(balancePos.x, balancePos.y - 0.2, balancePos.z);
+            scene.add(balance);
+        }
+
+        function createBeaker() {
+            // Beaker and water logic remains similar
+            const beakerMat = new THREE.MeshPhysicalMaterial({ color: 0xadd8e6, transmission: 0.9, thickness: 0.1, roughness: 0.1 });
+            beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
+            beaker.position.set(beakerPos.x, beakerPos.y - 0.2, beakerPos.z);
+            scene.add(beaker);
+            const waterMat = new THREE.MeshBasicMaterial({ color: 0x4299e1, transparent: true, opacity: 0.7 });
+            const water = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 32), waterMat);
+            water.position.y = -0.01;
+            beaker.add(water);
+        }
+
+        function createWeighBoat() {
+            // Weigh boat logic remains similar
+            const boatMat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+            const shape = new THREE.Shape();
+            shape.moveTo(-0.05, -0.05); shape.lineTo(0.05, -0.05); shape.lineTo(0.07, 0.05); shape.lineTo(-0.07, 0.05);
+            shape.closePath();
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.005, bevelEnabled: false });
+            weighBoat = new THREE.Mesh(geometry, boatMat);
+            weighBoat.rotation.x = -Math.PI / 2;
+            weighBoat.castShadow = true;
+            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y - 0.2, weighBoatStartPos.z);
+            weighBoat.name = "weighBoat";
+            scene.add(weighBoat);
+            grabbableObjects.push(weighBoat);
+
+            const waterInBoatGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
+            const waterInBoatMat = new THREE.MeshBasicMaterial({ color: 0x4299e1, transparent: true, opacity: 0.9 });
+            const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
+            waterInBoat.name = 'dispensedWater';
+            waterInBoat.visible = false;
+            weighBoat.add(waterInBoat);
+        }
+
+        function createPipette() {
+            // Pipette logic remains similar
+            const group = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0xd1d5db }));
+            group.add(body);
+            const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
+            plunger.position.y = 0.17;
+            plunger.name = 'plunger';
+            group.add(plunger);
+            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.01, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xd1d5db }));
+            tip.position.y = -0.19;
+            group.add(tip);
+            pipette = group;
+            pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
+            pipette.name = "pipette";
+            scene.add(pipette);
+            grabbableObjects.push(pipette);
+        }
+
+        // --- VR UI ---
+        function createVRUI() {
+            // Instruction Panel
+            vrInstructionPanel = createTextPanel(512, 256);
+            vrInstructionPanel.position.set(-1.2, 1.8, -1.5);
+            scene.add(vrInstructionPanel);
+
+            // Results Panel
+            vrResultsPanel = createTextPanel(512, 512);
+            vrResultsPanel.position.set(1.2, 1.8, -1.5);
+            scene.add(vrResultsPanel);
+
+            // Balance Display
+            vrBalanceDisplay = createTextPanel(256, 128);
+            vrBalanceDisplay.position.set(0, 0.15, 0); // Relative to balance
+            balance.add(vrBalanceDisplay);
+        }
+        
+        function createTextPanel(canvasWidth, canvasHeight) {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            const context = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+            
+            const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+            const geometry = new THREE.PlaneGeometry(canvasWidth / 512, canvasHeight / 512); // Scale down
+            const panel = new THREE.Mesh(geometry, material);
+            
+            panel.userData.canvas = canvas;
+            panel.userData.context = context;
+            panel.userData.texture = texture;
+            
+            return panel;
+        }
+
+        function updateTextPanel(panel, lines) {
+            const { canvas, context, texture } = panel.userData;
+            context.fillStyle = 'rgba(24, 24, 27, 0.8)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = '#4f46e5';
+            context.lineWidth = 10;
+            context.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            context.fillStyle = 'white';
+            context.font = `bold ${canvas.width/16}px Inter`;
+            context.fillText(lines[0], 20, 50);
+            
+            context.font = `${canvas.width/20}px Inter`;
+            let y = 100;
+            for (let i = 1; i < lines.length; i++) {
+                context.fillText(lines[i], 20, y);
+                y += 40;
+            }
+            texture.needsUpdate = true;
+        }
+
+        // --- CONTROLLERS ---
+        function initControllers() {
+            for (let i = 0; i < 2; i++) {
+                const controller = renderer.xr.getController(i);
+                scene.add(controller);
+                controllers.push(controller);
+
+                // Glove/Hand model
+                const handMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee });
+                const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.02), handMat);
+                palm.position.z = 0.01;
+                controller.add(palm);
+                
+                // Raycaster line for pointing
+                const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
+                const line = new THREE.Line(lineGeom);
+                line.scale.z = 5;
+                controller.add(line);
+
+                // Event Listeners
+                controller.addEventListener('selectstart', onSelectStart);
+                controller.addEventListener('selectend', onSelectEnd);
+                controller.addEventListener('squeezestart', onSqueezeStart);
+                controller.addEventListener('squeezeend', onSqueezeEnd);
+            }
+        }
+
+        function onSqueezeStart(event) {
+            const controller = event.target;
+            const controllerPos = controller.getWorldPosition(new THREE.Vector3());
+
+            // Find closest grabbable object
+            let closestObj = null;
+            let minDistance = 0.1; // Grab radius
+            grabbableObjects.forEach(obj => {
+                const objPos = obj.getWorldPosition(new THREE.Vector3());
+                const distance = controllerPos.distanceTo(objPos);
+                if (distance < minDistance) {
+                    closestObj = obj;
+                    minDistance = distance;
+                }
+            });
+
+            if (closestObj) {
+                // Attach object to controller
+                const worldScale = closestObj.getWorldScale(new THREE.Vector3());
+                const worldQuaternion = closestObj.getWorldQuaternion(new THREE.Quaternion());
+                
+                controller.attach(closestObj);
+                
+                // Rescale to counteract parent scaling
+                closestObj.scale.divide(controller.getWorldScale(new THREE.Vector3()));
+                
+                grabbedObject = { object: closestObj, controller };
+                
+                // Game logic state change
+                if (closestObj.name === 'pipette' && gameState === 'BALANCE_TARED') {
+                    setGameState('PIPETTE_HELD');
+                }
+            }
+        }
+
+        function onSqueezeEnd(event) {
+            if (grabbedObject) {
+                const { object, controller } = grabbedObject;
+                
+                // Detach object from controller and add back to scene
+                const worldPos = object.getWorldPosition(new THREE.Vector3());
+                const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
+                scene.attach(object);
+                object.position.copy(worldPos);
+                object.quaternion.copy(worldQuat);
+
+                // Check for placement
+                if (object.name === 'weighBoat') {
+                    const balancePlatePos = balance.children[1].getWorldPosition(new THREE.Vector3());
+                    if (object.position.distanceTo(balancePlatePos) < 0.1) {
+                        object.position.set(balancePlatePos.x, balancePlatePos.y + 0.01, balancePlatePos.z);
+                        object.quaternion.identity();
+                        balanceReading = 0.123;
+                        setGameState('BOAT_ON_BALANCE');
+                    }
+                }
+                
+                grabbedObject = null;
+            }
+        }
+
+        function onSelectStart(event) {
+            const controller = event.target;
+            if (controllerPointingAt) {
+                if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
+                    balanceReading = 0.0;
+                    if (gameState === 'BOAT_ON_BALANCE') {
+                        setGameState('BALANCE_TARED');
+                    } else {
+                        weighBoat.getObjectByName('dispensedWater').visible = false;
+                        setGameState('BALANCE_TARED');
+                    }
+                }
+            } else if (grabbedObject && grabbedObject.object.name === 'pipette') {
+                // Aspirate or Dispense
+                const pipetteObj = grabbedObject.object;
+                const plunger = pipetteObj.getObjectByName('plunger');
+                const beakerTopPos = beaker.getWorldPosition(new THREE.Vector3());
+                beakerTopPos.y += 0.1;
+                const balancePlatePos = balance.children[1].getWorldPosition(new THREE.Vector3());
+
+                if (gameState === 'PIPETTE_HELD' && pipetteObj.position.distanceTo(beakerTopPos) < 0.15) {
+                    plunger.position.y = 0.15; // Animate this later
+                    isPipetteFull = true;
+                    setGameState('WATER_ASPIRATED');
+                } else if (gameState === 'WATER_ASPIRATED' && pipetteObj.position.distanceTo(balancePlatePos) < 0.2) {
+                    plunger.position.y = 0.15; // Animate this later
+                    isPipetteFull = false;
+                    const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
+                    balanceReading = dispensedWeight;
+                    measurements.push(dispensedWeight);
+                    weighBoat.getObjectByName('dispensedWater').visible = true;
+                    setGameState('RECORDING_WEIGHT');
+                }
+            }
+        }
+        
+        function onSelectEnd(event) {
+            if (grabbedObject && grabbedObject.object.name === 'pipette') {
+                 const plunger = grabbedObject.object.getObjectByName('plunger');
+                 plunger.position.y = 0.17; // Animate this later
+            }
+        }
+
+        // --- GAME LOGIC & STATE MACHINE ---
+        function setGameState(newState) {
+            gameState = newState;
+            console.log("New State:", gameState);
+            updateVRUI();
+        }
+
+        function updateVRUI() {
+            // Instructions
+            let instructions = ["Lab Procedure"];
+            switch(gameState) {
+                case 'START': instructions.push("Grab the weigh boat."); break;
+                case 'BOAT_ON_BALANCE': instructions.push("Place the boat on the balance.", "Then press the red TARE button."); break;
+                case 'BALANCE_TARED': instructions.push("Grab the micropipette."); break;
+                case 'PIPETTE_HELD': instructions.push("Move pipette to beaker and press", "trigger to aspirate water."); break;
+                case 'WATER_ASPIRATED': instructions.push("Move pipette over weigh boat", "and press trigger to dispense."); break;
+                case 'RECORDING_WEIGHT':
+                    instructions.push(`Measurement ${measurements.length} recorded.`, "Press TARE button again.");
+                    if (measurements.length >= requiredMeasurements) { setGameState('ANALYSIS'); }
+                    break;
+                case 'ANALYSIS':
+                    instructions.push("All measurements complete.", "Analyzing results...");
+                    calculateStatistics();
+                    break;
+                default: instructions.push("Welcome! Grab the weigh boat."); break;
+            }
+            updateTextPanel(vrInstructionPanel, instructions);
+
+            // Results
+            let results = [`Measurements (${measurements.length}/${requiredMeasurements})`];
+            measurements.forEach((w, i) => results.push(`- Sample ${i+1}: ${w.toFixed(4)}g`));
+            if (gameState === 'ANALYSIS') {
+                const stats = calculateStatistics();
+                results.push("---", `Mean: ${stats.mean.toFixed(4)}g`, `StdDev: ${stats.stdDev.toFixed(4)}g`, `Result: ${stats.pass ? 'PASS' : 'FAIL'}`);
+            }
+            updateTextPanel(vrResultsPanel, results);
+        }
+        
+        function calculateStatistics() {
+            const sum = measurements.reduce((a, b) => a + b, 0);
+            const mean = sum / measurements.length;
+            const sqDiffs = measurements.map(v => (v - mean) ** 2);
+            const avgSqDiff = sqDiffs.reduce((a, b) => a + b, 0) / measurements.length;
+            const stdDev = Math.sqrt(avgSqDiff);
+            const pass = mean >= 0.995 && mean <= 1.005 && stdDev <= 0.006;
+            return { mean, stdDev, pass };
+        }
+
+        function handleController(controller) {
+            // Raycasting for pointing at UI elements
+            const raycaster = new THREE.Raycaster();
+            const tempMatrix = new THREE.Matrix4();
+            tempMatrix.identity().extractRotation(controller.matrixWorld);
+            raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+            raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+            
+            const intersects = raycaster.intersectObjects([tareButton]);
+            
+            if (intersects.length > 0) {
+                controllerPointingAt = intersects[0].object;
+                controllerPointingAt.material.color.set('yellow');
+            } else {
+                if (controllerPointingAt) {
+                    controllerPointingAt.material.color.set('red');
+                }
+                controllerPointingAt = null;
+            }
+        }
+
+        // --- RENDER LOOP ---
+        function render() {
+            if (controllers) {
+                controllers.forEach(controller => {
+                    if(!grabbedObject) handleController(controller);
+                });
             }
 
-            // --- Event Listeners for BOTH controllers ---
-            // We add a listener to each hand. Note the use of an arrow function 
-            // to pass the correct controller element into our generic throwBall function.
-            leftHand.addEventListener('triggerdown', () => throwBall(leftHand));
-            rightHand.addEventListener('triggerdown', () => throwBall(rightHand));
-        });
+            // Update balance display
+            updateTextPanel(vrBalanceDisplay, ["Balance", `${balanceReading.toFixed(4)} g`]);
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        init();
     </script>
 </body>
 </html>
