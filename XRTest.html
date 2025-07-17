@@ -20,19 +20,22 @@
     <script type="module">
         // --- VR BUTTON UTILITY (with improved error handling) ---
         class VRButton {
-            static createButton(renderer) {
+            static createButton(renderer, onSessionStart, onSessionEnd) {
                 const button = document.createElement('button');
                 function showEnterVR() {
                     let currentSession = null;
                     async function onSessionStarted(session) {
-                        console.log("WebXR session started successfully.");
+                        console.log("WebXR session starting...");
                         session.addEventListener('end', onSessionEnded);
                         try {
-                            console.log("Setting renderer XR session...");
                             await renderer.xr.setSession(session);
-                            console.log("Renderer XR session set.");
                             button.textContent = 'EXIT VR';
                             currentSession = session;
+                            console.log("WebXR session set on renderer.");
+                            // Callback to initialize VR-specific components
+                            if (typeof onSessionStart === 'function') {
+                                onSessionStart();
+                            }
                         } catch (e) {
                             console.error("Failed to set renderer XR session", e);
                             alert("An error occurred while setting up the VR session.");
@@ -40,13 +43,12 @@
                     }
 
                     function onSessionEnded() {
-                        console.log("WebXR session ended.");
                         currentSession.removeEventListener('end', onSessionEnded);
                         button.textContent = 'ENTER VR';
                         currentSession = null;
-                        // Reset simulation state when exiting VR
-                        if (typeof resetSimulation === 'function') {
-                            resetSimulation();
+                        // Callback to clean up VR components
+                        if (typeof onSessionEnd === 'function') {
+                            onSessionEnd();
                         }
                     }
                     
@@ -68,14 +70,13 @@
                     button.onclick = () => {
                         if (currentSession === null) {
                             console.log("Requesting WebXR session...");
-                            // FIX: Removed 'layers' from optionalFeatures as it can cause setup issues.
-                            const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] };
+                            // FIX: Simplified session request to be as basic as possible.
+                            const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor'] };
                             navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch(err => {
                                 console.error("Failed to request WebXR session:", err);
                                 alert("Could not start VR session. Please ensure your device supports WebXR and it is enabled.");
                             });
                         } else {
-                            console.log("Ending WebXR session...");
                             currentSession.end();
                         }
                     };
@@ -147,7 +148,8 @@
             renderer.shadowMap.enabled = true;
             renderer.xr.enabled = true;
             sceneContainer.appendChild(renderer.domElement);
-            document.body.appendChild(VRButton.createButton(renderer));
+            // FIX: Pass callbacks to the VRButton for session start/end
+            document.body.appendChild(VRButton.createButton(renderer, onSessionStart, onSessionEnd));
             scene.add(new THREE.AmbientLight(0xffffff, 0.6));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7.5);
@@ -159,10 +161,27 @@
             createWeighBoat();
             createPipette();
             createVRUI();
-            initControllers();
+            
             window.addEventListener('resize', onWindowResize, false);
             setGameState('START');
             renderer.setAnimationLoop(render);
+        }
+
+        // --- VR SESSION MANAGEMENT ---
+        function onSessionStart() {
+            console.log("Initializing controllers for VR session.");
+            initControllers();
+        }
+
+        function onSessionEnd() {
+            console.log("Cleaning up controllers from VR session.");
+            // Remove controllers from scene and clear array
+            controllers.forEach(controller => {
+                scene.remove(controller);
+            });
+            controllers = [];
+            // Reset simulation to a clean state
+            resetSimulation();
         }
 
         function createEnvironment() {
@@ -334,14 +353,12 @@
 
         function onSqueezeStart(event) {
             const controller = event.target;
-            // Prevent grabbing if an object is already held
             if (grabbedObject) return;
 
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
             let closestObj = null;
             let minDistance = 0.1;
             grabbableObjects.forEach(obj => {
-                // FIX: Check if the object's parent is the scene, meaning it's not already held.
                 if (obj.parent === scene) {
                     const objPos = obj.getWorldPosition(new THREE.Vector3());
                     const distance = controllerPos.distanceTo(objPos);
@@ -432,9 +449,8 @@
 
         function resetSimulation() {
             console.log("Resetting simulation...");
-            // FIX: Safely detach any grabbed object before resetting.
             if (grabbedObject) {
-                const { object, controller } = grabbedObject;
+                const { object } = grabbedObject;
                 const worldPos = object.getWorldPosition(new THREE.Vector3());
                 const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
                 scene.attach(object);
