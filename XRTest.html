@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WebXR Virtual Pipette Calibration Lab (CBRE Branded)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PHYSICS: Added Cannon.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
@@ -33,7 +35,6 @@
 Message: ${event.message}
 File: ${event.filename}
 Line: ${event.lineno}, Column: ${event.colno}`;
-            // Use a simple alert to ensure the error is visible.
             alert(errorMsg);
         });
 
@@ -47,13 +48,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 function showEnterVR() {
                     let currentSession = null;
                     async function onSessionStarted(session) {
-                        console.log("WebXR session starting...");
                         session.addEventListener('end', onSessionEnded);
                         try {
                             await renderer.xr.setSession(session);
                             button.textContent = 'EXIT VR';
                             currentSession = session;
-                            console.log("WebXR session set on renderer.");
                             if (typeof onSessionStart === 'function') onSessionStart();
                         } catch (e) {
                             console.error("Failed to set renderer XR session", e);
@@ -126,12 +125,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
-        // --- SCENE SETUP ---
+        // --- SCENE & PHYSICS SETUP ---
         let scene, camera, renderer, controllers = [], orbitControls;
+        let world, physicsObjects = []; // PHYSICS: World and objects array
         let bench, balance, beaker, weighBoat, pipette, tareButton, resetButton;
         let vrInstructionPanel, vrResultsPanel, vrBalanceDisplay;
 
-        // --- INTERACTIVE OBJECTS & STATE ---
         const grabbableObjects = [];
         let grabbedObject = null;
         let controllerPointingAt = null;
@@ -141,11 +140,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_DARK_GREY = '#435254';
         const CBRE_LIGHT_GREY = '#CAD1D3';
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
+        const METALLIC_SILVER = '#E5E7EB'; // VISUAL: Color for balance plate
 
         const benchPos = { x: 0, y: 0.4, z: -0.8 };
         const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
-        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.055, z: benchPos.z + 0.4 };
+        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.4 };
         const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z - 0.2 };
 
         let gameState = 'INIT';
@@ -157,6 +157,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const sceneContainer = document.getElementById('scene-container');
 
         function init() {
+            // Scene setup
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x2a303c);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -181,6 +182,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             orbitControls.maxDistance = 4;
             orbitControls.update();
 
+            // Lighting
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7.5);
@@ -193,6 +195,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             scene.add(spotLight);
             scene.add(spotLight.target);
 
+            // PHYSICS: Initialize the physics world
+            initPhysics();
+
             createEnvironment();
             createBalance();
             createBeaker();
@@ -203,6 +208,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             window.addEventListener('resize', onWindowResize, false);
             setGameState('START');
             renderer.setAnimationLoop(render);
+        }
+
+        // PHYSICS: Setup the Cannon.js world
+        function initPhysics() {
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0); // Set gravity
+            world.broadphase = new CANNON.NaiveBroadphase();
+            world.solver.iterations = 10;
         }
 
         function onSessionStart() {
@@ -218,18 +231,33 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function createEnvironment() {
+            // Visuals
             const floorGeom = new THREE.PlaneGeometry(10, 10);
             const floorMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY });
             const floor = new THREE.Mesh(floorGeom, floorMat);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
+            
             const benchGeom = new THREE.BoxGeometry(2.5, 0.1, 1.2);
             const benchMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY, metalness: 0.1, roughness: 0.8 });
             bench = new THREE.Mesh(benchGeom, benchMat);
             bench.position.set(benchPos.x, benchPos.y, benchPos.z);
             bench.receiveShadow = true;
             scene.add(bench);
+
+            // PHYSICS: Create static bodies for floor and bench
+            const floorShape = new CANNON.Plane();
+            const floorBody = new CANNON.Body({ mass: 0 });
+            floorBody.addShape(floorShape);
+            floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            world.addBody(floorBody);
+
+            const benchShape = new CANNON.Box(new CANNON.Vec3(1.25, 0.05, 0.6));
+            const benchBody = new CANNON.Body({ mass: 0 });
+            benchBody.addShape(benchShape);
+            benchBody.position.copy(bench.position);
+            world.addBody(benchBody);
         }
 
         function createBalance() {
@@ -237,11 +265,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             base.castShadow = true;
             group.add(base);
-            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: '#ffffff', metalness: 0.5 }));
+            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: METALLIC_SILVER, metalness: 0.8, roughness: 0.2 }));
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
-            // FIX: Upgraded material to support emissive properties for highlighting
+            
             const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
             const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
@@ -258,7 +286,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
             beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
             scene.add(beaker);
-            // FIX: Upgraded material to support emissive properties
             const waterMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.7 });
             const water = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 32), waterMat);
             water.position.y = -0.01;
@@ -267,46 +294,32 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function createWeighBoat() {
             const boatMat = new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY, side: THREE.DoubleSide });
-            
             const group = new THREE.Group();
-            const baseWidth = 0.14;
-            const baseDepth = 0.1;
-            const wallHeight = 0.04;
-            const wallThickness = 0.005;
-
+            const baseWidth = 0.14, baseDepth = 0.1, wallHeight = 0.04, wallThickness = 0.005;
             const base = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallThickness, baseDepth), boatMat);
-            base.position.y = wallThickness / 2;
-            base.castShadow = true;
-            group.add(base);
-
+            base.position.y = wallThickness / 2; base.castShadow = true; group.add(base);
             const frontWall = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallHeight, wallThickness), boatMat);
-            frontWall.position.set(0, wallHeight / 2, baseDepth / 2);
-            frontWall.castShadow = true;
-            group.add(frontWall);
-
+            frontWall.position.set(0, wallHeight / 2, baseDepth / 2); frontWall.castShadow = true; group.add(frontWall);
             const backWall = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallHeight, wallThickness), boatMat);
-            backWall.position.set(0, wallHeight / 2, -baseDepth / 2);
-            backWall.castShadow = true;
-            group.add(backWall);
-
+            backWall.position.set(0, wallHeight / 2, -baseDepth / 2); backWall.castShadow = true; group.add(backWall);
             const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, baseDepth), boatMat);
-            leftWall.position.set(-baseWidth / 2, wallHeight / 2, 0);
-            leftWall.castShadow = true;
-            group.add(leftWall);
-
+            leftWall.position.set(-baseWidth / 2, wallHeight / 2, 0); leftWall.castShadow = true; group.add(leftWall);
             const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, baseDepth), boatMat);
-            rightWall.position.set(baseWidth / 2, wallHeight / 2, 0);
-            rightWall.castShadow = true;
-            group.add(rightWall);
-
+            rightWall.position.set(baseWidth / 2, wallHeight / 2, 0); rightWall.castShadow = true; group.add(rightWall);
             weighBoat = group;
             weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y, weighBoatStartPos.z);
             weighBoat.name = "weighBoat";
             scene.add(weighBoat);
             grabbableObjects.push(weighBoat);
 
+            const weighBoatShape = new CANNON.Box(new CANNON.Vec3(baseWidth / 2, wallHeight / 2, baseDepth / 2));
+            const weighBoatBody = new CANNON.Body({ mass: 0.1 });
+            weighBoatBody.addShape(weighBoatShape);
+            weighBoatBody.position.copy(weighBoat.position);
+            world.addBody(weighBoatBody);
+            physicsObjects.push({ mesh: weighBoat, body: weighBoatBody });
+
             const waterInBoatGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.01, 16);
-            // FIX: Upgraded material to support emissive properties
             const waterInBoatMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
             const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
             waterInBoat.name = 'dispensedWater';
@@ -320,30 +333,26 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             group.add(body);
             const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: CBRE_GREEN }));
-            plunger.position.y = 0.17;
-            plunger.name = 'plunger';
-            group.add(plunger);
-            // FIX: Inverted tip geometry to be a proper point
+            plunger.position.y = 0.17; plunger.name = 'plunger'; group.add(plunger);
             const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.005, 0.08, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
-            tip.position.y = -0.19;
-            tip.name = 'pipetteTip';
-            group.add(tip);
-            
+            tip.position.y = -0.19; tip.name = 'pipetteTip'; group.add(tip);
             const waterInPipetteGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.28, 16);
-            // FIX: Upgraded material to support emissive properties
             const waterInPipetteMat = new THREE.MeshStandardMaterial({ color: '#63b3ed' });
             const waterInPipette = new THREE.Mesh(waterInPipetteGeo, waterInPipetteMat);
-            waterInPipette.name = 'waterInPipette';
-            waterInPipette.position.y = -0.01;
-            waterInPipette.visible = false;
-            group.add(waterInPipette);
-
+            waterInPipette.name = 'waterInPipette'; waterInPipette.position.y = -0.01; waterInPipette.visible = false; group.add(waterInPipette);
             pipette = group;
             pipette.scale.set(1.2, 1.2, 1.2);
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
             pipette.name = "pipette";
             scene.add(pipette);
             grabbableObjects.push(pipette);
+
+            const pipetteShape = new CANNON.Box(new CANNON.Vec3(0.02 * 1.2, 0.3 * 1.2 / 2, 0.02 * 1.2));
+            const pipetteBody = new CANNON.Body({ mass: 0.2 });
+            pipetteBody.addShape(pipetteShape);
+            pipetteBody.position.copy(pipette.position);
+            world.addBody(pipetteBody);
+            physicsObjects.push({ mesh: pipette, body: pipetteBody });
         }
 
         function createVRUI() {
@@ -355,11 +364,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             vrResultsPanel.position.set(1.2, 1.6, -1.2);
             vrResultsPanel.rotation.y = -Math.PI / 8;
             scene.add(vrResultsPanel);
-            
             vrBalanceDisplay = createTextPanel(256, 128);
-            vrBalanceDisplay.position.set(0, 0.1, -0.15); // Corrected position
+            vrBalanceDisplay.position.set(0, 0.1, -0.15);
             balance.add(vrBalanceDisplay);
-
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
             const resetButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
@@ -394,7 +401,17 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             context.fillStyle = 'white';
             context.textBaseline = 'middle';
             
-            if (lines.length === 1) {
+            // FIX: Special case for the balance display to make text larger
+            if (panel === vrBalanceDisplay) {
+                context.textAlign = 'center';
+                // Title "Balance"
+                context.font = `bold ${canvas.width/12}px 'Playfair Display'`;
+                context.fillText(lines[0], canvas.width/2, canvas.height * 0.3);
+                // The reading itself
+                context.font = `bold ${canvas.width/7}px 'Lato'`;
+                context.fillText(lines[1], canvas.width/2, canvas.height * 0.7);
+
+            } else if (lines.length === 1) {
                 context.textAlign = 'center';
                 context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
@@ -440,42 +457,28 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
             let closestObj = null;
             let minDistance = 0.15;
-            grabbableObjects.forEach(obj => {
-                if (obj.parent === scene) {
-                    const objPos = obj.getWorldPosition(new THREE.Vector3());
-                    const distance = controllerPos.distanceTo(objPos);
-                    if (distance < minDistance) {
-                        closestObj = obj;
-                        minDistance = distance;
-                    }
+            physicsObjects.forEach(pObj => {
+                const objPos = pObj.mesh.getWorldPosition(new THREE.Vector3());
+                const distance = controllerPos.distanceTo(objPos);
+                if (distance < minDistance) {
+                    closestObj = pObj;
+                    minDistance = distance;
                 }
             });
             if (closestObj) {
-                controller.attach(closestObj);
-                grabbedObject = { object: closestObj, controller };
-                if (closestObj.name === 'pipette' && gameState === 'BALANCE_TARED') {
-                    setGameState('PIPETTE_HELD');
-                }
+                grabbedObject = { physicsObject: closestObj, controller };
+                closestObj.body.type = CANNON.Body.KINEMATIC;
             }
         }
 
         function onSqueezeEnd(event) {
             if (grabbedObject) {
-                const { object } = grabbedObject;
-                const worldPos = object.getWorldPosition(new THREE.Vector3());
-                const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
-                scene.attach(object);
-                object.position.copy(worldPos);
-                object.quaternion.copy(worldQuat);
-                if (object.name === 'weighBoat') {
-                    const balancePlatePos = balance.children[1].getWorldPosition(new THREE.Vector3());
-                    if (object.position.distanceTo(balancePlatePos) < 0.1) {
-                        object.position.set(balancePlatePos.x, balancePlatePos.y + 0.015, balancePlatePos.z);
-                        object.quaternion.identity();
-                        balanceReading = 0.123;
-                        setGameState('BOAT_ON_BALANCE');
-                    }
-                }
+                const { physicsObject, controller } = grabbedObject;
+                physicsObject.body.type = CANNON.Body.DYNAMIC;
+                
+                const controllerVelocity = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.1);
+                physicsObject.body.velocity.set(controllerVelocity.x, controllerVelocity.y, controllerVelocity.z);
+                
                 grabbedObject = null;
             }
         }
@@ -492,8 +495,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 } else if (controllerPointingAt.name === 'resetButton') {
                     resetSimulation();
                 }
-            } else if (grabbedObject && grabbedObject.object.name === 'pipette') {
-                const pipetteObj = grabbedObject.object;
+            } else if (grabbedObject && grabbedObject.physicsObject.mesh.name === 'pipette') {
+                const pipetteObj = grabbedObject.physicsObject.mesh;
                 const plunger = pipetteObj.getObjectByName('plunger');
                 const tip = pipetteObj.getObjectByName('pipetteTip');
                 const tipPos = tip.getWorldPosition(new THREE.Vector3());
@@ -507,7 +510,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     isPipetteFull = true;
                     const waterInPipette = pipetteObj.getObjectByName('waterInPipette');
                     waterInPipette.visible = true;
-                    waterInPipette.scale.y = 1;
                     setGameState('WATER_ASPIRATED');
                 } else if (gameState === 'WATER_ASPIRATED' && tipPos.distanceTo(balancePlatePos) < 0.2) {
                     plunger.position.y = 0.15;
@@ -522,8 +524,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
         
         function onSelectEnd(event) {
-            if (grabbedObject && grabbedObject.object.name === 'pipette') {
-                 grabbedObject.object.getObjectByName('plunger').position.y = 0.17;
+            if (grabbedObject && grabbedObject.physicsObject.mesh.name === 'pipette') {
+                 grabbedObject.physicsObject.mesh.getObjectByName('plunger').position.y = 0.17;
             }
         }
 
@@ -534,16 +536,17 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function resetSimulation() {
             if (grabbedObject) {
-                const { object } = grabbedObject;
-                const worldPos = object.getWorldPosition(new THREE.Vector3());
-                const worldQuat = object.getWorldQuaternion(new THREE.Quaternion());
-                scene.attach(object);
-                object.position.copy(worldPos);
-                object.quaternion.copy(worldQuat);
+                grabbedObject.physicsObject.body.type = CANNON.Body.DYNAMIC;
                 grabbedObject = null;
             }
-            weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y, weighBoatStartPos.z);
-            pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
+            physicsObjects.forEach(pObj => {
+                const startPos = pObj.mesh.name === 'pipette' ? pipetteStartPos : weighBoatStartPos;
+                pObj.body.position.set(startPos.x, startPos.y, startPos.z);
+                pObj.body.velocity.set(0,0,0);
+                pObj.body.angularVelocity.set(0,0,0);
+                pObj.body.quaternion.set(0,0,0,1);
+            });
+
             weighBoat.getObjectByName('dispensedWater').visible = false;
             pipette.getObjectByName('waterInPipette').visible = false;
             measurements = [];
@@ -598,7 +601,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
             grabbableObjects.forEach(obj => {
                 let isHighlighted = false;
-                if(obj.parent === scene) {
+                if(!grabbedObject || obj !== grabbedObject.physicsObject.mesh) {
                     controllers.forEach(controller => {
                         const controllerPos = controller.getWorldPosition(new THREE.Vector3());
                         const objPos = obj.getWorldPosition(new THREE.Vector3());
@@ -652,7 +655,29 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        const clock = new THREE.Clock();
+        let oldElapsedTime = 0;
+
         function render() {
+            const elapsedTime = clock.getElapsedTime();
+            const deltaTime = elapsedTime - oldElapsedTime;
+            oldElapsedTime = elapsedTime;
+
+            if (world) {
+                world.step(1 / 60, deltaTime, 3);
+            }
+
+            if (grabbedObject) {
+                const { physicsObject, controller } = grabbedObject;
+                physicsObject.body.position.copy(controller.getWorldPosition(new THREE.Vector3()));
+                physicsObject.body.quaternion.copy(controller.getWorldQuaternion(new THREE.Quaternion()));
+            }
+
+            for(const obj of physicsObjects) {
+                obj.mesh.position.copy(obj.body.position);
+                obj.mesh.quaternion.copy(obj.body.quaternion);
+            }
+            
             if (!renderer.xr.isPresenting) {
                 orbitControls.update();
             }
