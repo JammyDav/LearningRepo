@@ -142,7 +142,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
         const METALLIC_SILVER = '#E5E7EB';
 
-        // FIX: Raised bench height back up
         const benchPos = { x: 0, y: 0.9, z: -0.8 };
         const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
@@ -275,7 +274,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             balance.position.set(balancePos.x, balancePos.y, balancePos.z);
             scene.add(balance);
 
-            // FIX: Added a static physics body for the balance
             const balanceBody = new CANNON.Body({ mass: 0 });
             const baseShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.05, 0.125));
             balanceBody.addShape(baseShape);
@@ -417,17 +415,17 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
             } else if (lines.length === 1) {
                 context.textAlign = 'center';
-                context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
+                context.font = `bold ${canvas.width/10}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
                 let lineSpacing = canvas.height / (lines.length + 2);
                 if (panel === vrResultsPanel) lineSpacing = 55;
                 
-                context.font = `bold ${canvas.width/18}px 'Playfair Display'`;
+                context.font = `bold ${canvas.width/15}px 'Playfair Display'`;
                 context.fillText(lines[0], 25, lineSpacing);
                 
-                context.font = `normal ${canvas.width/22}px 'Lato'`;
+                context.font = `normal ${canvas.width/20}px 'Lato'`;
                 for (let i = 1; i < lines.length; i++) {
                     context.fillText(lines[i], 25, lineSpacing * (i + 1.2));
                 }
@@ -471,7 +469,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             });
             if (closestObj) {
                 grabbedObject = { physicsObject: closestObj, controller };
+                // FIX: Wake the body up before making it kinematic
+                closestObj.body.wakeUp();
                 closestObj.body.type = CANNON.Body.KINEMATIC;
+                
+                // This logic is now more reliable because the previous state should set correctly
+                if (closestObj.mesh.name === 'pipette' && gameState === 'BALANCE_TARED') {
+                    setGameState('PIPETTE_HELD');
+                }
             }
         }
 
@@ -482,6 +487,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 
                 const controllerVelocity = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.1);
                 physicsObject.body.velocity.set(controllerVelocity.x, controllerVelocity.y, controllerVelocity.z);
+                // FIX: Wake the body up on release to ensure physics applies
+                physicsObject.body.wakeUp();
                 
                 grabbedObject = null;
             }
@@ -491,8 +498,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
                     balanceReading = 0.0;
-                    if (gameState === 'BOAT_ON_BALANCE') setGameState('BALANCE_TARED');
-                    else {
+                    if (gameState === 'BOAT_ON_BALANCE') {
+                        setGameState('BALANCE_TARED');
+                    } else {
                         weighBoat.getObjectByName('dispensedWater').visible = false;
                         setGameState('BALANCE_TARED');
                     }
@@ -549,6 +557,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 pObj.body.velocity.set(0,0,0);
                 pObj.body.angularVelocity.set(0,0,0);
                 pObj.body.quaternion.set(0,0,0,1);
+                pObj.body.wakeUp();
             });
 
             weighBoat.getObjectByName('dispensedWater').visible = false;
@@ -659,17 +668,19 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
-        // FIX: Added placement check logic
         function checkPlacementConditions() {
             if (gameState === 'START' && !grabbedObject) {
-                const weighBoatBody = physicsObjects.find(p => p.mesh.name === 'weighBoat').body;
-                const balancePlateY = balancePos.y + 0.055; // Y position of the top of the balance plate
+                const weighBoatPhysObj = physicsObjects.find(p => p.mesh.name === 'weighBoat');
+                if (!weighBoatPhysObj) return;
+                const weighBoatBody = weighBoatPhysObj.body;
+
+                const balancePlateY = balancePos.y + 0.055;
                 const distanceToBalance = weighBoatBody.position.distanceTo(new CANNON.Vec3(balancePos.x, balancePlateY, balancePos.z));
-                const isSettled = weighBoatBody.velocity.almostZero(0.1);
+                const isSettled = weighBoatBody.sleepState === CANNON.Body.SLEEPING || weighBoatBody.velocity.almostZero(0.05);
 
                 if (isSettled && distanceToBalance < 0.1) {
-                    weighBoatBody.type = CANNON.Body.KINEMATIC; // Lock it in place
-                    weighBoatBody.position.set(balancePos.x, balancePlateY + 0.02, balancePos.z);
+                    weighBoatBody.type = CANNON.Body.STATIC; // Use STATIC to make it immovable
+                    weighBoatBody.position.set(balancePos.x, balancePlateY + 0.022, balancePos.z);
                     weighBoatBody.quaternion.set(0,0,0,1);
                     balanceReading = 0.123;
                     setGameState('BOAT_ON_BALANCE');
