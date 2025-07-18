@@ -398,6 +398,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function updateTextPanel(panel, lines) {
             const { canvas, context, texture } = panel.userData;
+            // FIX: Added clearRect to prevent text ghosting
+            context.clearRect(0, 0, canvas.width, canvas.height);
             context.fillStyle = 'rgba(24, 24, 27, 0.8)';
             context.fillRect(0, 0, canvas.width, canvas.height);
             context.strokeStyle = CBRE_GREEN;
@@ -415,19 +417,20 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
             } else if (lines.length === 1) {
                 context.textAlign = 'center';
-                context.font = `bold ${canvas.width/10}px 'Playfair Display'`;
+                context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
-                let lineSpacing = canvas.height / (lines.length + 2);
-                if (panel === vrResultsPanel) lineSpacing = 55;
+                // FIX: Simplified and corrected text drawing logic
+                const lineHeight = 55;
+                let startY = 80;
+
+                context.font = `bold ${canvas.width/18}px 'Playfair Display'`;
+                context.fillText(lines[0], 25, 50);
                 
-                context.font = `bold ${canvas.width/15}px 'Playfair Display'`;
-                context.fillText(lines[0], 25, lineSpacing);
-                
-                context.font = `normal ${canvas.width/20}px 'Lato'`;
+                context.font = `normal ${canvas.width/22}px 'Lato'`;
                 for (let i = 1; i < lines.length; i++) {
-                    context.fillText(lines[i], 25, lineSpacing * (i + 1.2));
+                    context.fillText(lines[i], 25, startY + (i * lineHeight));
                 }
             }
             texture.needsUpdate = true;
@@ -469,11 +472,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             });
             if (closestObj) {
                 grabbedObject = { physicsObject: closestObj, controller };
-                // FIX: Wake the body up before making it kinematic
                 closestObj.body.wakeUp();
                 closestObj.body.type = CANNON.Body.KINEMATIC;
                 
-                // This logic is now more reliable because the previous state should set correctly
                 if (closestObj.mesh.name === 'pipette' && gameState === 'BALANCE_TARED') {
                     setGameState('PIPETTE_HELD');
                 }
@@ -487,7 +488,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 
                 const controllerVelocity = controller.getWorldDirection(new THREE.Vector3()).multiplyScalar(0.1);
                 physicsObject.body.velocity.set(controllerVelocity.x, controllerVelocity.y, controllerVelocity.z);
-                // FIX: Wake the body up on release to ensure physics applies
                 physicsObject.body.wakeUp();
                 
                 grabbedObject = null;
@@ -679,9 +679,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 const isSettled = weighBoatBody.sleepState === CANNON.Body.SLEEPING || weighBoatBody.velocity.almostZero(0.05);
 
                 if (isSettled && distanceToBalance < 0.1) {
-                    weighBoatBody.type = CANNON.Body.STATIC; // Use STATIC to make it immovable
+                    // FIX: Make the body static and put it to sleep for stability
+                    weighBoatBody.type = CANNON.Body.STATIC;
                     weighBoatBody.position.set(balancePos.x, balancePlateY + 0.022, balancePos.z);
                     weighBoatBody.quaternion.set(0,0,0,1);
+                    weighBoatBody.sleep();
+
                     balanceReading = 0.123;
                     setGameState('BOAT_ON_BALANCE');
                 }
