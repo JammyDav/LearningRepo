@@ -386,11 +386,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function createVRUI() {
             vrInstructionPanel = createTextPanel(512, 300);
-            vrInstructionPanel.position.set(-1.2, 1.6, -1.2);
+            vrInstructionPanel.position.set(-1.2, 1.2, -1.2);
             vrInstructionPanel.rotation.y = Math.PI / 8;
             scene.add(vrInstructionPanel);
             vrResultsPanel = createTextPanel(512, 600);
-            vrResultsPanel.position.set(1.2, 1.6, -1.2);
+            vrResultsPanel.position.set(1.2, 1.2, -1.2);
             vrResultsPanel.rotation.y = -Math.PI / 8;
             scene.add(vrResultsPanel);
             vrBalanceDisplay = createTextPanel(256, 128);
@@ -400,7 +400,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const resetButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
             resetButton.name = 'resetButton';
-            resetButton.position.set(0, 1.3, -1.5);
+            resetButton.position.set(0, 0.9, -1.5);
             const resetButtonText = createTextPanel(256, 128);
             updateTextPanel(resetButtonText, ["RESET"]);
             resetButtonText.position.z = 0.011;
@@ -440,7 +440,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
             } else if (lines.length === 1) {
                 context.textAlign = 'center';
-                context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
+                context.font = `bold ${canvas.width/10}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
