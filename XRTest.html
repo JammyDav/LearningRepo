@@ -398,7 +398,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function updateTextPanel(panel, lines) {
             const { canvas, context, texture } = panel.userData;
-            // FIX: Added clearRect to prevent text ghosting
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.fillStyle = 'rgba(24, 24, 27, 0.8)';
             context.fillRect(0, 0, canvas.width, canvas.height);
@@ -421,7 +420,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
-                // FIX: Simplified and corrected text drawing logic
                 const lineHeight = 55;
                 let startY = 80;
 
@@ -430,7 +428,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 
                 context.font = `normal ${canvas.width/22}px 'Lato'`;
                 for (let i = 1; i < lines.length; i++) {
-                    context.fillText(lines[i], 25, startY + (i * lineHeight));
+                    context.fillText(lines[i], 25, startY + ((i-1) * lineHeight));
                 }
             }
             texture.needsUpdate = true;
@@ -495,6 +493,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function onSelectStart(event) {
+            // FIX: Added new logic for explicit recording step
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
                     balanceReading = 0.0;
@@ -530,8 +529,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
                     balanceReading = dispensedWeight;
                     weighBoat.getObjectByName('dispensedWater').visible = true;
-                    setGameState('RECORDING_WEIGHT');
+                    setGameState('WEIGHT_DISPLAYED'); // <-- New state
                 }
+            } else if (gameState === 'WEIGHT_DISPLAYED' && !grabbedObject) {
+                measurements.push(balanceReading);
+                setGameState('RECORDING_WEIGHT');
             }
         }
         
@@ -570,12 +572,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function updateVRUI() {
             let instructions = ["Lab Procedure"];
+            // FIX: Added new case for the explicit recording step
             switch(gameState) {
                 case 'START': instructions.push("Grab the weigh boat (use grip button)."); break;
                 case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at green TARE button & trigger."); break;
                 case 'BALANCE_TARED': instructions.push("Grab the micropipette."); break;
                 case 'PIPETTE_HELD': instructions.push("Move pipette tip into beaker, press trigger."); break;
                 case 'WATER_ASPIRATED': instructions.push("Move pipette over boat, press trigger."); break;
+                case 'WEIGHT_DISPLAYED': instructions.push("Weight displayed.", "Press trigger to record measurement."); break;
                 case 'RECORDING_WEIGHT':
                     instructions.push(`Measurement ${measurements.length} recorded.`, "Press TARE button again.");
                     if (measurements.length >= requiredMeasurements) setGameState('ANALYSIS');
@@ -679,7 +683,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 const isSettled = weighBoatBody.sleepState === CANNON.Body.SLEEPING || weighBoatBody.velocity.almostZero(0.05);
 
                 if (isSettled && distanceToBalance < 0.1) {
-                    // FIX: Make the body static and put it to sleep for stability
                     weighBoatBody.type = CANNON.Body.STATIC;
                     weighBoatBody.position.set(balancePos.x, balancePlateY + 0.022, balancePos.z);
                     weighBoatBody.quaternion.set(0,0,0,1);
