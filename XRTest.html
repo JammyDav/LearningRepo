@@ -142,7 +142,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
         const METALLIC_SILVER = '#E5E7EB';
 
-        const benchPos = { x: 0, y: 0.9, z: -0.8 };
+        // FIX: Adjusted bench height to a more comfortable level
+        const benchPos = { x: 0, y: 0.8, z: -0.8 };
         const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
         const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.4 };
@@ -493,7 +494,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function onSelectStart(event) {
-            // FIX: Added new logic for explicit recording step
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
                     balanceReading = 0.0;
@@ -529,7 +529,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
                     balanceReading = dispensedWeight;
                     weighBoat.getObjectByName('dispensedWater').visible = true;
-                    setGameState('WEIGHT_DISPLAYED'); // <-- New state
+                    setGameState('WEIGHT_DISPLAYED');
                 }
             } else if (gameState === 'WEIGHT_DISPLAYED' && !grabbedObject) {
                 measurements.push(balanceReading);
@@ -572,7 +572,6 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function updateVRUI() {
             let instructions = ["Lab Procedure"];
-            // FIX: Added new case for the explicit recording step
             switch(gameState) {
                 case 'START': instructions.push("Grab the weigh boat (use grip button)."); break;
                 case 'BOAT_ON_BALANCE': instructions.push("Place boat on balance.", "Point at green TARE button & trigger."); break;
