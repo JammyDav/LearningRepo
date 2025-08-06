@@ -998,7 +998,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     balance.rotation.z = 15 * Math.PI / 180; // -15 degrees in radians
                     
                     // Raise by 20cm (0.2 units) and set position
-                    balance.position.set(balancePos.x, balancePos.y + 0.2, balancePos.z);
+                    balance.position.set(balancePos.x, balancePos.y + 0.1, balancePos.z);
                     
                     // Log the structure of the loaded model
                     console.log('Balance structure:', balance);
