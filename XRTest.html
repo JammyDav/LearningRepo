@@ -14,6 +14,234 @@
         body { margin: 0; font-family: 'Lato', sans-serif; overflow: hidden; }
         #scene-container { width: 100vw; height: 100vh; }
         #vr-button { position: absolute; bottom: 20px; right: 20px; }
+        
+        /* Loading screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #003F2D, #006A4D);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+            transition: opacity 0.5s ease-out;
+        }
+        
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-logo {
+            font-size: 2.5em;
+            font-family: 'Playfair Display', serif;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        /* Desktop UI */
+        #desktop-ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .ui-panel {
+            background: rgba(0, 63, 45, 0.9);
+            backdrop-filter: blur(10px);
+            border: 2px solid #006A4D;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            color: white;
+            font-family: 'Lato', sans-serif;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .ui-panel:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        .ui-header {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: #CAD1D3;
+            border-bottom: 2px solid #006A4D;
+            padding-bottom: 8px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #006A4D, #00A86B);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 168, 107, 0.3);
+        }
+        
+        /* Measurements panel specific styling */
+        #measurements-list {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #006A4D;
+        }
+        
+        #measurements-list ul {
+            margin: 0;
+            padding-left: 20px;
+            list-style-type: none;
+        }
+        
+        #measurements-list li {
+            padding: 5px 0;
+            color: #CAD1D3;
+            position: relative;
+        }
+        
+        #measurements-list li:before {
+            content: "•";
+            color: #00A86B;
+            font-weight: bold;
+            position: absolute;
+            left: -15px;
+        }
+        
+        #statistics-display {
+            margin-top: 15px;
+        }
+        
+        #statistics-display .stats-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #statistics-display h4 {
+            margin: 0 0 10px 0;
+            color: #CAD1D3;
+            font-family: 'Playfair Display', serif;
+            border-bottom: 1px solid #006A4D;
+            padding-bottom: 5px;
+        }
+        
+        #statistics-display p {
+            margin: 8px 0;
+            font-size: 0.95em;
+        }
+        
+        #progress-text {
+            font-size: 0.9em;
+            color: #CAD1D3;
+            margin-top: 5px;
+            font-weight: 500;
+        }
+        
+        /* Help overlay */
+        #help-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .help-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #333;
+        }
+        
+        .help-button, .reset-button {
+            position: fixed;
+            bottom: 20px;
+            padding: 12px 24px;
+            background: rgba(0, 63, 45, 0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 2px solid #006A4D;
+            border-radius: 8px;
+            font-family: 'Lato', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 200;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.9em;
+        }
+        
+        .help-button {
+            left: 20px;
+        }
+        
+        .reset-button {
+            left: 130px;
+        }
+        
+        .help-button:hover, .reset-button:hover {
+            background: rgba(0, 106, 77, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 106, 77, 0.4);
+            border-color: #00A86B;
+        }
+        
+        .help-button:active, .reset-button:active {
+            transform: translateY(0);
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+        }
     </style>
 
     <!-- This import map tells the browser where to find the 'three.js' library and its modules. -->
@@ -27,11 +255,73 @@
     </script>
 </head>
 <body class="bg-zinc-900 text-white">
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-logo">CBRE Virtual Lab</div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading Pipette Calibration Simulation...</div>
+    </div>
+
+    <!-- Desktop UI -->
+    <div id="desktop-ui">
+        <div class="ui-panel" id="instructions-panel">
+            <div class="ui-header">Lab Instructions</div>
+            <div id="instruction-text">Welcome! Click VR button to begin immersive training.</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+            <div id="progress-text">Step 0 of 7</div>
+        </div>
+        
+        <div class="ui-panel" id="measurements-panel" style="display: none;">
+            <div class="ui-header">Measurements</div>
+            <div id="measurements-list">No measurements recorded yet.</div>
+            <div id="statistics-display"></div>
+        </div>
+    </div>
+
+    <!-- Help Overlay -->
+    <div id="help-overlay">
+        <div class="help-content">
+            <h2 style="color: #003F2D; font-family: 'Playfair Display', serif;">Virtual Pipette Calibration Help</h2>
+            <h3>Mouse Controls (Browser):</h3>
+            <ul>
+                <li><strong>Click & Drag:</strong> Grab and move objects (pipette, weigh boat)</li>
+                <li><strong>Click:</strong> Activate buttons, aspirate/dispense water, record measurements</li>
+                <li><strong>Mouse Wheel:</strong> Zoom in/out</li>
+                <li><strong>Right Click + Drag:</strong> Rotate camera view</li>
+            </ul>
+            <h3>VR Controls (Quest/Other VR):</h3>
+            <ul>
+                <li><strong>Grip Button:</strong> Grab and hold objects (pipette, weigh boat)</li>
+                <li><strong>Trigger:</strong> Aspirate/dispense water, record measurements, press buttons</li>
+                <li><strong>Point & Click:</strong> Aim at buttons and pull trigger to activate</li>
+            </ul>
+            <h3>Procedure:</h3>
+            <ol>
+                <li>Grab the weigh boat and place it on the balance</li>
+                <li>Click/Point at the green TARE button</li>
+                <li>Grab the micropipette</li>
+                <li>Move pipette tip into beaker and click/trigger to aspirate water</li>
+                <li>Move pipette over weigh boat and click/trigger to dispense</li>
+                <li>Click/trigger (without holding anything) to record the measurement</li>
+                <li>Repeat steps 2-6 for 5 total measurements</li>
+            </ol>
+            <h3>Tips:</h3>
+            <p><strong>Browser:</strong> Full simulation available with mouse controls. <strong>VR:</strong> Immersive experience with hand tracking.</p>
+            <button onclick="toggleHelp()" style="margin-top: 20px; padding: 10px 20px; background: #006A4D; color: white; border: none; border-radius: 4px;">Close</button>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <button class="help-button" onclick="toggleHelp()">Help</button>
+    <button class="reset-button" onclick="resetSimulation()">Reset</button>
 
     <div id="scene-container"></div>
 
     <script type="module">
         // This is a global error handler. If any uncaught error occurs, it will display an alert.
+        // This is very useful for debugging issues that cause a black screen.
         window.addEventListener('error', function(event) {
             const errorMsg = `An unexpected error occurred which may cause a black screen:
 Message: ${event.message}
@@ -43,10 +333,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         // Import the necessary components from the three.js library using the import map.
         import * as THREE from 'three';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-        // FEATURE: Import the GLTF Loader to load CAD models.
         import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
         // --- VR BUTTON UTILITY ---
+        // This class creates and manages the "Enter VR" button.
         class VRButton {
             static createButton(renderer, onSessionStart, onSessionEnd) {
                 const button = document.createElement('button');
@@ -76,16 +366,26 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     button.style.cursor = 'pointer';
                     button.style.position = 'absolute';
                     button.style.right = '20px';
-                    button.style.bottom = '20px';
-                    button.style.padding = '12px 24px';
-                    button.style.border = '1px solid #fff';
-                    button.style.borderRadius = '4px';
-                    button.style.background = 'rgba(0,0,0,0.5)';
+                    button.style.bottom = '80px';
+                    button.style.padding = '15px 30px';
+                    button.style.border = '2px solid #006A4D';
+                    button.style.borderRadius = '8px';
+                    button.style.background = 'linear-gradient(135deg, #006A4D, #003F2D)';
                     button.style.color = '#fff';
-                    button.style.font = 'normal 16px Lato, sans-serif';
+                    button.style.font = 'bold 16px Lato, sans-serif';
+                    button.style.textTransform = 'uppercase';
+                    button.style.letterSpacing = '1px';
+                    button.style.boxShadow = '0 4px 15px rgba(0, 106, 77, 0.3)';
+                    button.style.transition = 'all 0.3s ease';
                     button.textContent = 'ENTER VR';
-                    button.onmouseenter = () => { button.style.opacity = '1.0'; };
-                    button.onmouseleave = () => { button.style.opacity = '0.9'; };
+                    button.onmouseenter = () => { 
+                        button.style.transform = 'translateY(-2px)';
+                        button.style.boxShadow = '0 6px 20px rgba(0, 106, 77, 0.4)';
+                    };
+                    button.onmouseleave = () => { 
+                        button.style.transform = 'translateY(0)';
+                        button.style.boxShadow = '0 4px 15px rgba(0, 106, 77, 0.3)';
+                    };
 
                     button.onclick = () => {
                         if (currentSession === null) {
@@ -131,14 +431,20 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         // --- SCENE & PHYSICS SETUP ---
+        // Declare all major variables for the scene, physics, and interactive objects.
         let scene, camera, renderer, controllers = [], orbitControls;
         let world, physicsObjects = [];
-        let bench, balance, beaker, weighBoat, pipette, uiTareButton, resetButton;
+        let bench, balance, beaker, weighBoat, pipette, tareButton, resetButton;
         let vrInstructionPanel, vrResultsPanel, vrBalanceDisplay;
 
         const grabbableObjects = [];
         let grabbedObject = null;
         let controllerPointingAt = null;
+        
+        // Mouse interaction variables
+        let raycaster, mouse, mouseGrabbedObject = null;
+        let isMouseDown = false;
+        let mousePointingAt = null;
 
         // --- BRANDING & POSITIONING CONSTANTS ---
         const CBRE_GREEN = '#003F2D';
@@ -147,8 +453,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
         const METALLIC_SILVER = '#E5E7EB';
 
-        const benchPos = { x: 0, y: 0.8, z: -0.8 };
-        const balancePos = { x: -0.5, y: benchPos.y, z: benchPos.z };
+        const benchPos = { x: 0, y: 0.4, z: -0.8 };
+        const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
         const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.4 };
         const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z - 0.2 };
@@ -163,7 +469,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const sceneContainer = document.getElementById('scene-container');
 
         // --- INITIALIZATION ---
+        // The main function that sets up the entire experience.
         function init() {
+            // Create the three.js scene, camera, and renderer.
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x2a303c);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -178,24 +486,81 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             sceneContainer.appendChild(renderer.domElement);
             document.body.appendChild(VRButton.createButton(renderer, onSessionStart, onSessionEnd));
             
+            // Setup mouse controls for browser viewing.
             orbitControls = new OrbitControls(camera, renderer.domElement);
             orbitControls.target.set(0, benchPos.y, benchPos.z);
             orbitControls.enableDamping = true;
             
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            // Initialize mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Add mouse event listeners
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('click', onMouseClick, false);
+            
+            // Add a test listener to make sure events are working
+            renderer.domElement.addEventListener('mousedown', function(e) {
+                console.log('🖱️ Raw mouse down event detected on canvas');
+            }, false);
+            
+            // Disable context menu on right click
+            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault(), false);
+            
+            // Add escape key handler to release grabbed objects
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && mouseGrabbedObject) {
+                    // Release any grabbed object
+                    mouseGrabbedObject.physicsObject.body.type = CANNON.Body.DYNAMIC;
+                    mouseGrabbedObject.physicsObject.body.velocity.set(0, 0, 0);
+                    mouseGrabbedObject = null;
+                    isMouseDown = false;
+                    orbitControls.enabled = true;
+                }
+            }, false);
+            
+            // Configure professional lighting for the scene.
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            
+            // Main directional light (sunlight)
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7.5);
             dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 50;
             scene.add(dirLight);
-            const spotLight = new THREE.SpotLight(0xffffff, 1.0, 10, Math.PI / 4, 0.5, 2);
+            
+            // Fill light for softer shadows
+            const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+            fillLight.position.set(-5, 5, 5);
+            scene.add(fillLight);
+            
+            // Task lighting over the workspace
+            const spotLight = new THREE.SpotLight(0xffffff, 1.2, 10, Math.PI / 4, 0.3, 2);
             spotLight.position.set(0, 3, 0);
             spotLight.target.position.set(0, benchPos.y, benchPos.z);
             spotLight.castShadow = true;
+            spotLight.shadow.mapSize.width = 1024;
+            spotLight.shadow.mapSize.height = 1024;
             scene.add(spotLight);
             scene.add(spotLight.target);
+            
+            // Subtle rim lighting
+            const rimLight = new THREE.DirectionalLight(0x6eb5ff, 0.2);
+            rimLight.position.set(-2, 1, -2);
+            scene.add(rimLight);
 
+            // Initialize the physics world.
             initPhysics();
+            
+            // Initialize audio system
+            initAudio();
 
+            // Create all the objects in the scene.
             createEnvironment();
             createBalance();
             createBeaker();
@@ -203,48 +568,386 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             createPipette();
             createVRUI();
             
+            // Add event listener for window resizing.
             window.addEventListener('resize', onWindowResize, false);
+            
+            // Set the initial state of the simulation.
             setGameState('START');
+            
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading-screen').classList.add('hidden');
+            }, 1500);
+            
+            // Start the main animation loop.
             renderer.setAnimationLoop(render);
+        }
+
+        // --- MOUSE INTERACTION FUNCTIONS ---
+        
+        function onMouseMove(event) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Handle mouse dragging for grabbed objects
+            if (mouseGrabbedObject && isMouseDown) {
+                // Prevent default behavior and stop event propagation when dragging
+                event.preventDefault();
+                event.stopPropagation();
+                
+                console.log('🔄 Dragging object:', mouseGrabbedObject.physicsObject.mesh.name);
+                
+                // Update raycaster
+                raycaster.setFromCamera(mouse, camera);
+                
+                // Create a plane to project the mouse position onto
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -benchPos.y - 0.1);
+                const intersection = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersection);
+                
+                if (intersection) {
+                    // Move the grabbed object to the mouse position
+                    mouseGrabbedObject.physicsObject.body.position.set(
+                        intersection.x,
+                        intersection.y + 0.1,
+                        intersection.z
+                    );
+                    mouseGrabbedObject.physicsObject.body.wakeUp();
+                }
+            } else if (!isMouseDown) {
+                // Only handle hover effects when not dragging
+                handleMouseHover();
+            }
+        }
+        
+        function onMouseDown(event) {
+            console.log('Mouse down event triggered, button:', event.button);
+            
+            if (event.button === 0) { // Left mouse button
+                isMouseDown = true;
+                
+                // Calculate mouse position and check for grabbable objects
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                
+                console.log('Mouse position:', mouse.x, mouse.y);
+                console.log('Grabbable objects count:', grabbableObjects.length);
+                console.log('Grabbable objects:', grabbableObjects.map(obj => obj.name));
+                
+                // Check all objects in the scene, not just grabbable ones for debugging
+                const allIntersects = raycaster.intersectObjects(scene.children, true);
+                console.log('All intersects:', allIntersects.length, allIntersects.map(i => i.object.name || 'unnamed'));
+                
+                // Only check grabbable objects, not UI buttons
+                const intersects = raycaster.intersectObjects(grabbableObjects, true);
+                
+                console.log('Mouse down - grabbable intersects found:', intersects.length);
+                
+                if (intersects.length > 0) {
+                    const clickedObject = intersects[0].object;
+                    console.log('Clicked object:', clickedObject.name || 'unnamed', 'Type:', clickedObject.type);
+                    console.log('Clicked object parent:', clickedObject.parent ? clickedObject.parent.name : 'no parent');
+                    
+                    // Find the physics object - check both direct mesh and parent relationships
+                    const physicsObj = physicsObjects.find(pObj => {
+                        const match = pObj.mesh === clickedObject || 
+                               pObj.mesh === clickedObject.parent ||
+                               clickedObject.parent === pObj.mesh ||
+                               (clickedObject.parent && clickedObject.parent.parent === pObj.mesh) ||
+                               // Also check if the clicked object is a child of the physics mesh
+                               (pObj.mesh.children && pObj.mesh.children.includes(clickedObject));
+                        
+                        if (match) {
+                            console.log('Found matching physics object:', pObj.mesh.name);
+                        }
+                        return match;
+                    });
+                    
+                    console.log('Found physics object:', physicsObj ? physicsObj.mesh.name : 'NONE');
+                    
+                    if (physicsObj) {
+                        // Disable orbit controls IMMEDIATELY when grabbing an object
+                        orbitControls.enabled = false;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        
+                        mouseGrabbedObject = { physicsObject: physicsObj };
+                        physicsObj.body.type = CANNON.Body.KINEMATIC;
+                        physicsObj.body.wakeUp();
+                        
+                        console.log('✅ Successfully grabbed object:', physicsObj.mesh.name);
+                        
+                        // Trigger state changes
+                        if (physicsObj.mesh.name === 'pipette' && gameState === 'BALANCE_TARED') {
+                            setGameState('PIPETTE_HELD');
+                        }
+                    } else {
+                        console.log('❌ No physics object found for clicked object');
+                    }
+                } else {
+                    console.log('❌ No grabbable objects intersected');
+                }
+            }
+        }
+        
+        function onMouseUp(event) {
+            if (event.button === 0) { // Left mouse button
+                console.log('Mouse up - was grabbed:', !!mouseGrabbedObject);
+                isMouseDown = false;
+                
+                if (mouseGrabbedObject) {
+                    const { physicsObject } = mouseGrabbedObject;
+                    physicsObject.body.type = CANNON.Body.DYNAMIC;
+                    physicsObject.body.velocity.set(0, 0, 0);
+                    physicsObject.body.wakeUp();
+                    console.log('Released object:', physicsObject.mesh.name);
+                    mouseGrabbedObject = null;
+                }
+                
+                // Re-enable orbit controls after releasing any grabbed object
+                orbitControls.enabled = true;
+            }
+        }
+        
+        function onMouseClick(event) {
+            if (event.button === 0) { // Left mouse button
+                // Only handle click events if we're not dragging
+                if (mouseGrabbedObject) return;
+                
+                raycaster.setFromCamera(mouse, camera);
+                
+                // Check for UI button clicks first
+                const uiObjects = [];
+                if (tareButton) uiObjects.push(tareButton);
+                if (resetButton) uiObjects.push(resetButton);
+                
+                const uiIntersects = raycaster.intersectObjects(uiObjects, true);
+                
+                if (uiIntersects.length > 0) {
+                    const clickedObject = uiIntersects[0].object;
+                    
+                    if (clickedObject.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
+                        playClickSound();
+                        balanceReading = 0.0;
+                        if (gameState === 'BOAT_ON_BALANCE') {
+                            setGameState('BALANCE_TARED');
+                        } else {
+                            weighBoat.getObjectByName('dispensedWater').visible = false;
+                            setGameState('BALANCE_TARED');
+                        }
+                    } else if (clickedObject.name === 'resetButton') {
+                        playClickSound();
+                        resetSimulation();
+                    }
+                } else {
+                    // Handle pipette actions
+                    handleMousePipetteActions();
+                }
+            }
+        }
+        
+        function handleMouseHover() {
+            if (!raycaster || !mouse) return;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check for hovering over interactive objects - need to ensure they exist first
+            const interactiveObjects = [];
+            if (tareButton) interactiveObjects.push(tareButton);
+            if (resetButton) interactiveObjects.push(resetButton);
+            interactiveObjects.push(...grabbableObjects);
+            
+            const intersects = raycaster.intersectObjects(interactiveObjects, true);
+            
+            // Reset previous hover state
+            if (mousePointingAt) {
+                if (mousePointingAt.material && mousePointingAt.material.emissive) {
+                    mousePointingAt.material.emissive.setHex(0x000000);
+                }
+                mousePointingAt = null;
+                document.body.style.cursor = 'default';
+            }
+            
+            if (intersects.length > 0) {
+                const hoveredObject = intersects[0].object;
+                mousePointingAt = hoveredObject;
+                
+                // Add hover effect - check if material and emissive exist
+                if (hoveredObject.material && hoveredObject.material.emissive) {
+                    hoveredObject.material.emissive.setHex(0x333333);
+                }
+                document.body.style.cursor = 'pointer';
+            }
+        }
+        
+        function handleMousePipetteActions() {
+            // Handle pipette interactions when clicked (without being grabbed)
+            if (mouseGrabbedObject && mouseGrabbedObject.physicsObject.mesh.name === 'pipette') {
+                const pipetteObj = mouseGrabbedObject.physicsObject.mesh;
+                const plunger = pipetteObj.getObjectByName('plunger');
+                const tip = pipetteObj.getObjectByName('pipetteTip');
+                const tipPos = tip.getWorldPosition(new THREE.Vector3());
+
+                const beakerTopPos = beaker.getWorldPosition(new THREE.Vector3());
+                beakerTopPos.y += 0.1;
+                
+                // Get balance plate position
+                let balancePlatePos;
+                if (balance.children && balance.children.length > 0) {
+                    // For GLB model or fallback, find the plate position
+                    balancePlatePos = balance.getWorldPosition(new THREE.Vector3());
+                    balancePlatePos.y += 0.055;
+                } else {
+                    balancePlatePos = balance.getWorldPosition(new THREE.Vector3());
+                    balancePlatePos.y += 0.055;
+                }
+
+                if (gameState === 'PIPETTE_HELD' && tipPos.distanceTo(beakerTopPos) < 0.15) {
+                    // Aspirate water
+                    plunger.position.y = 0.15;
+                    isPipetteFull = true;
+                    const waterInPipette = pipetteObj.getObjectByName('waterInPipette');
+                    waterInPipette.visible = true;
+                    setGameState('WATER_ASPIRATED');
+                    
+                    // Visual feedback
+                    setTimeout(() => {
+                        plunger.position.y = 0.17;
+                    }, 200);
+                    
+                } else if (gameState === 'WATER_ASPIRATED' && tipPos.distanceTo(balancePlatePos) < 0.2) {
+                    // Dispense water
+                    plunger.position.y = 0.15;
+                    isPipetteFull = false;
+                    pipetteObj.getObjectByName('waterInPipette').visible = false;
+                    const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
+                    balanceReading = dispensedWeight;
+                    weighBoat.getObjectByName('dispensedWater').visible = true;
+                    setGameState('WEIGHT_DISPLAYED');
+                    
+                    // Visual feedback
+                    setTimeout(() => {
+                        plunger.position.y = 0.17;
+                    }, 200);
+                }
+            } else if (gameState === 'WEIGHT_DISPLAYED' && !mouseGrabbedObject) {
+                // Record measurement
+                playSuccessSound();
+                measurements.push(balanceReading);
+                setGameState('RECORDING_WEIGHT');
+            }
         }
 
         // --- PHYSICS & VR SESSION MANAGEMENT ---
         function initPhysics() {
             world = new CANNON.World();
-            world.gravity.set(0, -9.82, 0);
+            world.gravity.set(0, -9.82, 0); // Standard Earth gravity.
             world.broadphase = new CANNON.NaiveBroadphase();
             world.solver.iterations = 10;
         }
 
+        // Called when the user clicks "Enter VR".
         function onSessionStart() {
-            orbitControls.enabled = false;
-            initControllers();
+            orbitControls.enabled = false; // Disable mouse controls.
+            initControllers(); // Initialize VR controllers.
         }
 
+        // Called when the user exits VR.
         function onSessionEnd() {
-            orbitControls.enabled = true;
+            orbitControls.enabled = true; // Re-enable mouse controls.
             controllers.forEach(controller => scene.remove(controller));
             controllers = [];
+            grabbedObject = null; // Clear any grabbed objects
+            
+            // Also clear mouse grabbed objects
+            if (mouseGrabbedObject) {
+                mouseGrabbedObject.physicsObject.body.type = CANNON.Body.DYNAMIC;
+                mouseGrabbedObject = null;
+            }
+            isMouseDown = false;
+            
             resetSimulation();
         }
 
         // --- OBJECT CREATION FUNCTIONS ---
+        // Each function is responsible for creating both the visual mesh (Three.js) and the physical body (Cannon.js).
 
         function createEnvironment() {
-            const floorGeom = new THREE.PlaneGeometry(10, 10);
-            const floorMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY });
+            // Create a more detailed lab environment
+            const floorGeom = new THREE.PlaneGeometry(15, 15);
+            const floorMat = new THREE.MeshStandardMaterial({ 
+                color: CBRE_DARK_GREY,
+                roughness: 0.8,
+                metalness: 0.1
+            });
             const floor = new THREE.Mesh(floorGeom, floorMat);
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
             
+            // Enhanced workbench with better materials
             const benchGeom = new THREE.BoxGeometry(2.5, 0.1, 1.2);
-            const benchMat = new THREE.MeshStandardMaterial({ color: CBRE_DARK_GREY, metalness: 0.1, roughness: 0.8 });
+            const benchMat = new THREE.MeshStandardMaterial({ 
+                color: '#2c3e40',
+                metalness: 0.2, 
+                roughness: 0.6,
+                envMapIntensity: 0.5
+            });
             bench = new THREE.Mesh(benchGeom, benchMat);
             bench.position.set(benchPos.x, benchPos.y, benchPos.z);
             bench.receiveShadow = true;
+            bench.castShadow = true;
             scene.add(bench);
+            
+            // Add bench edge trim for professional look
+            const edgeGeom = new THREE.BoxGeometry(2.52, 0.02, 1.22);
+            const edgeMat = new THREE.MeshStandardMaterial({ 
+                color: METALLIC_SILVER,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const edge = new THREE.Mesh(edgeGeom, edgeMat);
+            edge.position.set(benchPos.x, benchPos.y + 0.051, benchPos.z);
+            edge.castShadow = true;
+            scene.add(edge);
+            
+            // Add wall backdrop
+            const wallGeom = new THREE.PlaneGeometry(8, 4);
+            const wallMat = new THREE.MeshStandardMaterial({ 
+                color: '#ecf0f1',
+                roughness: 0.9
+            });
+            const wall = new THREE.Mesh(wallGeom, wallMat);
+            wall.position.set(0, 2, -3);
+            wall.receiveShadow = true;
+            scene.add(wall);
+            
+            // CBRE Logo on wall
+            const logoGeom = new THREE.PlaneGeometry(1, 0.3);
+            const logoMat = new THREE.MeshBasicMaterial({ 
+                color: CBRE_GREEN,
+                transparent: true,
+                opacity: 0.8
+            });
+            const logo = new THREE.Mesh(logoGeom, logoMat);
+            logo.position.set(0, 2.5, -2.99);
+            scene.add(logo);
+            
+            // Add logo text
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            context.fillStyle = 'white';
+            context.font = 'bold 48px Arial';
+            context.textAlign = 'center';
+            context.fillText('CBRE', 256, 80);
+            const logoTexture = new THREE.CanvasTexture(canvas);
+            logoMat.map = logoTexture;
 
+            // Create physics bodies
             const floorShape = new CANNON.Plane();
             const floorBody = new CANNON.Body({ mass: 0 });
             floorBody.addShape(floorShape);
@@ -259,53 +962,173 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function createBalance() {
+            // For local file access, skip the fetch check and go directly to GLTFLoader
+            // GLTFLoader can handle file:// URLs better than fetch()
+            console.log('Attempting to load Balance.glb directly with GLTFLoader...');
+            loadBalanceWithGLTF();
+        }
+        
+        function loadBalanceWithGLTF() {
             const loader = new GLTFLoader();
-            // FIX: Changed path to be more explicit. Assumes Balance.glb is in the root.
-            // If it's in a 'models' folder, change this to './models/Balance.glb'
-            loader.load(
-                './Balance.glb', 
-                function (gltf) {
+            
+            // Add more detailed logging
+            console.log('Attempting to load Balance.glb...');
+            
+            // Try multiple path formats for local file access
+            const glbPaths = [
+                './Balance.glb',
+                'Balance.glb',
+                window.location.href.replace('index.html', 'Balance.glb')
+            ];
+            
+            let currentPathIndex = 0;
+            
+            function tryLoadGLB() {
+                const currentPath = glbPaths[currentPathIndex];
+                console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);
+                
+                loader.load(currentPath, (gltf) => {
+                    console.log('Successfully loaded Balance.glb:', gltf);
                     balance = gltf.scene;
-                    balance.scale.set(0.15, 0.15, 0.15);
+                    
+                    // Scale and position the balance
+                    balance.scale.setScalar(0.1); // Try smaller scale first
                     balance.position.set(balancePos.x, balancePos.y, balancePos.z);
                     
-                    balance.traverse(child => {
+                    // Log the structure of the loaded model
+                    console.log('Balance structure:', balance);
+                    console.log('Balance children:', balance.children);
+                    
+                    // Enable shadows for all meshes in the model
+                    balance.traverse((child) => {
                         if (child.isMesh) {
+                            console.log('Found mesh:', child.name, child.material);
                             child.castShadow = true;
                             child.receiveShadow = true;
+                            
+                            // Enhance materials if needed
+                            if (child.material) {
+                                child.material.envMapIntensity = 0.5;
+                            }
                         }
                     });
                     
                     scene.add(balance);
-                },
-                undefined,
-                function (error) {
-                    // FIX: Added a more helpful error message.
-                    console.error('An error occurred loading the balance model:', error);
-                    alert("Failed to load 'Balance.glb'. Please check the file path and name (it's case-sensitive) in your repository and in the code.");
-                    // Fallback to primitive if model fails to load
-                    const group = new THREE.Group();
-                    const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
-                    group.add(base);
-                    balance = group;
-                    balance.position.set(balancePos.x, balancePos.y, balancePos.z);
-                    scene.add(balance);
-                }
-            );
+                    console.log('Balance added to scene');
+                    
+                    // Create TARE button (assuming it's not part of the GLB model)
+                    const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
+                    const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
+                    tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
+                    tareButton.name = 'tareButton';
+                    tareButton.position.set(0.1, 0.055, 0.08); // Adjust position relative to your GLB model
+                    tareButton.castShadow = true;
+                    balance.add(tareButton);
+                    
+                    // Create VR balance display panel
+                    vrBalanceDisplay = createTextPanel(256, 128);
+                    vrBalanceDisplay.position.set(0, 0.1, -0.15); // Adjust position relative to your GLB model
+                    balance.add(vrBalanceDisplay);
+                    
+                    // Create physics body for the balance
+                    const balanceBody = new CANNON.Body({ mass: 0 });
+                    // Create a box shape that roughly matches your balance dimensions
+                    // You may need to adjust these dimensions based on your GLB model
+                    const baseShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.05, 0.125));
+                    balanceBody.addShape(baseShape);
+                    const plateShape = new CANNON.Cylinder(0.1, 0.1, 0.01, 32);
+                    const plateOffset = new CANNON.Vec3(0, 0.055, 0);
+                    balanceBody.addShape(plateShape, plateOffset);
+                    balanceBody.position.copy(balance.position);
+                    balanceBody.name = "balance";
+                    world.addBody(balanceBody);
+                    
+                    console.log('Balance setup complete');
+                    
+                }, (progress) => {
+                    const percent = (progress.loaded / progress.total * 100);
+                    console.log('Balance loading progress:', percent + '%');
+                    
+                    // Update loading screen text
+                    const loadingText = document.querySelector('.loading-text');
+                    if (loadingText && percent < 100) {
+                        loadingText.textContent = `Loading Balance Model... ${percent.toFixed(0)}%`;
+                    }
+                    
+                }, (error) => {
+                    console.error(`Failed to load GLB with path ${currentPath}:`, error);
+                    
+                    // Check if this is a CORS error
+                    if (error.message && error.message.includes('CORS')) {
+                        console.log('CORS error detected - this happens when loading from file:// URLs');
+                    }
+                    
+                    // Try next path
+                    currentPathIndex++;
+                    if (currentPathIndex < glbPaths.length) {
+                        console.log('Trying next path...');
+                        tryLoadGLB();
+                    } else {
+                        console.error('All GLB loading attempts failed:', error);
+                        console.error('Error type:', error.constructor.name);
+                        console.error('Error message:', error.message);
+                        
+                        console.log('Falling back to geometric balance...');
+                        
+                        // Fallback to creating geometric balance if all GLB attempts fail
+                        createGeometricBalance();
+                    }
+                });
+            }
+            
+            tryLoadGLB();
+        }
+        
+        // Fallback function to create the original geometric balance
+        function createGeometricBalance() {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
+            base.castShadow = true;
+            group.add(base);
+            const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: METALLIC_SILVER, metalness: 0.8, roughness: 0.2 }));
+            plate.position.y = 0.055;
+            plate.castShadow = true;
+            group.add(plate);
+            
+            const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
+            const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
+            tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
+            tareButton.name = 'tareButton';
+            tareButton.position.set(0.1, 0.055, 0.08);
+            group.add(tareButton);
+            balance = group;
+            balance.position.set(balancePos.x, balancePos.y, balancePos.z);
+            scene.add(balance);
+            
+            vrBalanceDisplay = createTextPanel(256, 128);
+            vrBalanceDisplay.position.set(0, 0.1, -0.15);
+            balance.add(vrBalanceDisplay);
 
+            // Create a compound static physics body for the balance.
             const balanceBody = new CANNON.Body({ mass: 0 });
             const baseShape = new CANNON.Box(new CANNON.Vec3(0.15, 0.05, 0.125));
-            balanceBody.addShape(baseShape, new CANNON.Vec3(0, 0.05, 0));
+            balanceBody.addShape(baseShape);
             const plateShape = new CANNON.Cylinder(0.1, 0.1, 0.01, 32);
-            const plateOffset = new CANNON.Vec3(0, 0.105, 0);
+            const plateOffset = new CANNON.Vec3(0, 0.055, 0);
             balanceBody.addShape(plateShape, plateOffset);
-            balanceBody.position.copy(balancePos);
+            balanceBody.position.copy(balance.position);
             balanceBody.name = "balance";
             world.addBody(balanceBody);
         }
 
         function createBeaker() {
-            const beakerMat = new THREE.MeshPhysicalMaterial({ color: CBRE_LIGHT_GREY, transmission: 0.9, thickness: 0.1, roughness: 0.1 });
+            const beakerMat = new THREE.MeshPhysicalMaterial({ 
+                color: CBRE_LIGHT_GREY, 
+                transmission: 0.9, 
+                roughness: 0.1,
+                transparent: true,
+                opacity: 0.3
+            });
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
             beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
             scene.add(beaker);
@@ -334,6 +1157,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             weighBoat.name = "weighBoat";
             scene.add(weighBoat);
             grabbableObjects.push(weighBoat);
+            
+            console.log('✅ WeighBoat created and added to grabbableObjects');
+            console.log('WeighBoat name:', weighBoat.name);
+            console.log('WeighBoat children count:', weighBoat.children.length);
+            console.log('GrabbableObjects array now contains:', grabbableObjects.length, 'objects');
 
             const weighBoatShape = new CANNON.Box(new CANNON.Vec3(baseWidth / 2, wallHeight / 2, baseDepth / 2));
             const weighBoatBody = new CANNON.Body({ mass: 0.1 });
@@ -342,6 +1170,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             weighBoatBody.name = "weighBoat";
             world.addBody(weighBoatBody);
             physicsObjects.push({ mesh: weighBoat, body: weighBoatBody });
+            
+            console.log('✅ WeighBoat physics object created');
+            console.log('PhysicsObjects array now contains:', physicsObjects.length, 'objects');
 
             const waterInBoatGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.01, 16);
             const waterInBoatMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
@@ -354,47 +1185,215 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function createPipette() {
             const group = new THREE.Group();
-            const mainMat = new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY });
-            const highlightMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
-
-            const mainBody = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 32), mainMat);
-            mainBody.position.y = 0.1; group.add(mainBody);
-            const handGrip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 32), mainMat);
-            handGrip.position.y = 0.25; group.add(handGrip);
-            const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.08, 16), mainMat);
-            plunger.position.y = 0.34; plunger.name = 'plunger'; group.add(plunger);
-            const plungerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.015, 16), highlightMat);
-            plungerCap.position.y = 0.04; plunger.add(plungerCap);
-            const ejectorHook = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.008, 8, 16, Math.PI), mainMat);
-            ejectorHook.position.set(0, 0.28, 0.02); ejectorHook.rotation.x = Math.PI / 2; group.add(ejectorHook);
-            const tipEjector = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.12, 32), mainMat);
-            tipEjector.position.y = 0.08; group.add(tipEjector);
-            const tipCone = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.01, 0.15, 32), mainMat);
-            group.add(tipCone);
-            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.005, 0.08, 16), mainMat);
-            tip.position.y = -0.115; tip.name = 'pipetteTip'; group.add(tip);
-            
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
+            group.add(body);
+            const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: CBRE_GREEN }));
+            plunger.position.y = 0.17; plunger.name = 'plunger'; group.add(plunger);
+            const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.005, 0.08, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
+            tip.position.y = -0.19; tip.name = 'pipetteTip'; group.add(tip);
             const waterInPipetteGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.28, 16);
             const waterInPipetteMat = new THREE.MeshStandardMaterial({ color: '#63b3ed' });
             const waterInPipette = new THREE.Mesh(waterInPipetteGeo, waterInPipetteMat);
             waterInPipette.name = 'waterInPipette'; waterInPipette.position.y = -0.01; waterInPipette.visible = false; group.add(waterInPipette);
-            
             pipette = group;
             pipette.scale.set(1.2, 1.2, 1.2);
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
             pipette.name = "pipette";
             scene.add(pipette);
             grabbableObjects.push(pipette);
+            
+            console.log('✅ Pipette created and added to grabbableObjects');
+            console.log('Pipette name:', pipette.name);
 
-            const pipetteShape = new CANNON.Box(new CANNON.Vec3(0.03, 0.2, 0.03));
+            const pipetteShape = new CANNON.Box(new CANNON.Vec3(0.02 * 1.2, 0.3 * 1.2 / 2, 0.02 * 1.2));
             const pipetteBody = new CANNON.Body({ mass: 0.2 });
             pipetteBody.addShape(pipetteShape);
             pipetteBody.position.copy(pipette.position);
             world.addBody(pipetteBody);
             physicsObjects.push({ mesh: pipette, body: pipetteBody });
+            
+            console.log('✅ Pipette physics object created');
         }
 
-        // --- UI CREATION & UPDATES ---
+        // --- AUDIO FEEDBACK SYSTEM ---
+        let audioContext;
+        
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn('Audio context not supported:', e);
+                audioContext = null;
+            }
+        }
+        
+        function playSuccessSound() {
+            if (!audioContext || audioContext.state === 'suspended') {
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                return;
+            }
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+                oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+                oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.warn('Audio playback failed:', e);
+            }
+        }
+        
+        function playClickSound() {
+            if (!audioContext || audioContext.state === 'suspended') {
+                if (audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                return;
+            }
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.warn('Audio playback failed:', e);
+            }
+        }
+
+        // --- DESKTOP UI MANAGEMENT ---
+        function updateDesktopUI() {
+            const instructionText = document.getElementById('instruction-text');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            const measurementsPanel = document.getElementById('measurements-panel');
+            const measurementsList = document.getElementById('measurements-list');
+            const statisticsDisplay = document.getElementById('statistics-display');
+            
+            let instructions = "";
+            let stepNumber = 0;
+            
+            switch(gameState) {
+                case 'START': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Enter VR and grab the weigh boat using the grip button." :
+                        "Click and drag the weigh boat to place it on the balance.";
+                    stepNumber = 1;
+                    break;
+                case 'BOAT_ON_BALANCE': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Point at the green TARE button and pull the trigger." :
+                        "Click the green TARE button.";
+                    stepNumber = 2;
+                    break;
+                case 'BALANCE_TARED': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Grab the micropipette." :
+                        "Click and drag the micropipette.";
+                    stepNumber = 3;
+                    break;
+                case 'PIPETTE_HELD': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Dip the pipette tip into the beaker and pull trigger to aspirate water." :
+                        "Drag the pipette tip into the beaker and click to aspirate water.";
+                    stepNumber = 4;
+                    break;
+                case 'WATER_ASPIRATED': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Move the pipette over the weigh boat and pull trigger to dispense." :
+                        "Drag the pipette over the weigh boat and click to dispense.";
+                    stepNumber = 5;
+                    break;
+                case 'WEIGHT_DISPLAYED': 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Pull the trigger (without holding anything) to record this measurement." :
+                        "Click anywhere to record this measurement.";
+                    stepNumber = 6;
+                    break;
+                case 'RECORDING_WEIGHT':
+                    instructions = `Measurement ${measurements.length} recorded. Press TARE to continue.`;
+                    stepNumber = 6;
+                    break;
+                case 'ANALYSIS':
+                    instructions = "All measurements complete! Review your results.";
+                    stepNumber = 7;
+                    break;
+                default: 
+                    instructions = renderer.xr.isPresenting ? 
+                        "Welcome! Enter VR to begin the calibration procedure." :
+                        "Welcome! Use mouse to interact. Click and drag objects, click buttons.";
+                    stepNumber = 0;
+                    break;
+            }
+            
+            instructionText.textContent = instructions;
+            const progress = (stepNumber / 7) * 100;
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `Step ${stepNumber} of 7`;
+            
+            // Update measurements panel
+            if (measurements.length > 0) {
+                measurementsPanel.style.display = 'block';
+                let measurementHTML = '<ul>';
+                measurements.forEach((measurement, index) => {
+                    measurementHTML += `<li>Sample ${index + 1}: ${measurement.toFixed(4)}g</li>`;
+                });
+                measurementHTML += '</ul>';
+                measurementsList.innerHTML = measurementHTML;
+                
+                if (gameState === 'ANALYSIS') {
+                    const stats = calculateStatistics();
+                    statisticsDisplay.innerHTML = `
+                        <div class="stats-container">
+                            <h4>Statistical Analysis</h4>
+                            <p><strong>Mean:</strong> ${stats.mean.toFixed(4)}g</p>
+                            <p><strong>Standard Deviation:</strong> ${stats.stdDev.toFixed(4)}g</p>
+                            <p><strong>CV (%):</strong> ${((stats.stdDev / stats.mean) * 100).toFixed(2)}%</p>
+                            <p><strong>Range:</strong> ${Math.min(...measurements).toFixed(4)}g - ${Math.max(...measurements).toFixed(4)}g</p>
+                            <p style="margin-top: 15px;"><strong>Result:</strong> <span style="color: ${stats.pass ? '#00A86B' : '#e74c3c'}; font-weight: bold; text-shadow: 0 0 10px ${stats.pass ? '#00A86B' : '#e74c3c'}40;">${stats.pass ? 'PASS' : 'FAIL'}</span></p>
+                            <p style="font-size: 0.85em; color: #CAD1D3; margin-top: 10px; font-style: italic;">
+                                ${stats.pass ? 'Calibration within acceptable limits.' : 'Calibration requires attention.'}
+                            </p>
+                        </div>
+                    `;
+                }
+            } else {
+                measurementsPanel.style.display = 'none';
+            }
+        }
+        
+        // Help overlay functions
+        function toggleHelp() {
+            const helpOverlay = document.getElementById('help-overlay');
+            helpOverlay.style.display = helpOverlay.style.display === 'flex' ? 'none' : 'flex';
+        }
+        
+        // Make functions globally accessible
+        window.toggleHelp = toggleHelp;
+        window.resetSimulation = function() {
+            resetSimulation();
+        };
 
         function createVRUI() {
             vrInstructionPanel = createTextPanel(512, 300);
@@ -406,20 +1405,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             vrResultsPanel.rotation.y = -Math.PI / 8;
             scene.add(vrResultsPanel);
             
-            vrBalanceDisplay = createTextPanel(256, 128);
-            vrBalanceDisplay.position.set(balancePos.x, balancePos.y + 0.3, balancePos.z);
-            scene.add(vrBalanceDisplay);
-
-            const uiTareButtonGeom = new THREE.PlaneGeometry(0.2, 0.07);
-            const uiTareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
-            uiTareButton = new THREE.Mesh(uiTareButtonGeom, uiTareButtonMat);
-            uiTareButton.name = 'uiTareButton';
-            uiTareButton.position.set(balancePos.x, balancePos.y + 0.2, balancePos.z);
-            const uiTareButtonText = createTextPanel(256, 64);
-            updateTextPanel(uiTareButtonText, ["TARE"]);
-            uiTareButton.add(uiTareButtonText);
-            scene.add(uiTareButton);
-
+            // Note: vrBalanceDisplay is now created in createBalance() function
+            
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
             const resetButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
@@ -446,7 +1433,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         function updateTextPanel(panel, lines) {
             const { canvas, context, texture } = panel.userData;
-            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.clearRect(0, 0, canvas.width, canvas.height); // Prevents text ghosting
             context.fillStyle = 'rgba(24, 24, 27, 0.8)';
             context.fillRect(0, 0, canvas.width, canvas.height);
             context.strokeStyle = CBRE_GREEN;
@@ -464,7 +1451,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
             } else if (lines.length === 1) {
                 context.textAlign = 'center';
-                context.font = `bold ${canvas.width/8}px 'Playfair Display'`;
+                context.font = `bold ${canvas.width/10}px 'Playfair Display'`;
                 context.fillText(lines[0], canvas.width/2, canvas.height/2);
             } else {
                 context.textAlign = 'left';
@@ -504,6 +1491,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        // Handles grabbing objects.
         function onSqueezeStart(event) {
             const controller = event.target;
             if (grabbedObject) return;
@@ -529,6 +1517,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        // Handles releasing objects.
         function onSqueezeEnd(event) {
             if (grabbedObject) {
                 const { physicsObject, controller } = grabbedObject;
@@ -542,9 +1531,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        // Handles trigger presses for actions like aspirating, dispensing, and recording.
         function onSelectStart(event) {
+            // Case 1: Pointing at a UI button.
             if (controllerPointingAt) {
-                if (controllerPointingAt.name === 'uiTareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
+                if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
+                    playClickSound();
                     balanceReading = 0.0;
                     if (gameState === 'BOAT_ON_BALANCE') {
                         setGameState('BALANCE_TARED');
@@ -553,8 +1545,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                         setGameState('BALANCE_TARED');
                     }
                 } else if (controllerPointingAt.name === 'resetButton') {
+                    playClickSound();
                     resetSimulation();
                 }
+            // Case 2: Holding the pipette.
             } else if (grabbedObject && grabbedObject.physicsObject.mesh.name === 'pipette') {
                 const pipetteObj = grabbedObject.physicsObject.mesh;
                 const plunger = pipetteObj.getObjectByName('plunger');
@@ -563,17 +1557,35 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
                 const beakerTopPos = beaker.getWorldPosition(new THREE.Vector3());
                 beakerTopPos.y += 0.1;
-                const balancePlateY = balancePos.y + 0.105;
-                const balancePlatePos = new THREE.Vector3(balancePos.x, balancePlateY, balancePos.z);
+                
+                // Get balance plate position - need to find the plate in the balance
+                let balancePlatePos;
+                if (balance.children && balance.children.length > 0) {
+                    // For GLB model, try to find a mesh that could be the plate
+                    const plateMesh = balance.children.find(child => 
+                        child.isMesh && child.geometry && child.geometry.type === 'CylinderGeometry'
+                    );
+                    if (plateMesh) {
+                        balancePlatePos = plateMesh.getWorldPosition(new THREE.Vector3());
+                    } else {
+                        // Fallback to balance position + plate offset
+                        balancePlatePos = balance.getWorldPosition(new THREE.Vector3());
+                        balancePlatePos.y += 0.055; // Approximate plate height
+                    }
+                } else {
+                    // Fallback to balance position + plate offset
+                    balancePlatePos = balance.getWorldPosition(new THREE.Vector3());
+                    balancePlatePos.y += 0.055;
+                }
 
                 if (gameState === 'PIPETTE_HELD' && tipPos.distanceTo(beakerTopPos) < 0.1) {
-                    plunger.position.y = 0.32;
+                    plunger.position.y = 0.15;
                     isPipetteFull = true;
                     const waterInPipette = pipetteObj.getObjectByName('waterInPipette');
                     waterInPipette.visible = true;
                     setGameState('WATER_ASPIRATED');
                 } else if (gameState === 'WATER_ASPIRATED' && tipPos.distanceTo(balancePlatePos) < 0.2) {
-                    plunger.position.y = 0.32;
+                    plunger.position.y = 0.15;
                     isPipetteFull = false;
                     pipetteObj.getObjectByName('waterInPipette').visible = false;
                     const dispensedWeight = 1.0 + (Math.random() - 0.5) * 0.02;
@@ -581,15 +1593,18 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     weighBoat.getObjectByName('dispensedWater').visible = true;
                     setGameState('WEIGHT_DISPLAYED');
                 }
+            // Case 3: Not holding anything, ready to record.
             } else if (gameState === 'WEIGHT_DISPLAYED' && !grabbedObject) {
+                playSuccessSound();
                 measurements.push(balanceReading);
                 setGameState('RECORDING_WEIGHT');
             }
         }
         
+        // Handles trigger release.
         function onSelectEnd(event) {
             if (grabbedObject && grabbedObject.physicsObject.mesh.name === 'pipette') {
-                 grabbedObject.physicsObject.mesh.getObjectByName('plunger').position.y = 0.34;
+                 grabbedObject.physicsObject.mesh.getObjectByName('plunger').position.y = 0.17;
             }
         }
 
@@ -599,6 +1614,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             console.log("New State:", newState);
             gameState = newState;
             updateVRUI();
+            updateDesktopUI();
         }
 
         function resetSimulation() {
@@ -623,6 +1639,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             setGameState('START');
         }
 
+        // Updates the text on the UI panels based on the current game state.
         function updateVRUI() {
             let instructions = ["Lab Procedure"];
             switch(gameState) {
@@ -653,18 +1670,26 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             updateTextPanel(vrResultsPanel, results);
         }
         
+        // Calculates the final statistics after 5 measurements.
         function calculateStatistics() {
             const sum = measurements.reduce((a, b) => a + b, 0);
             const mean = sum / measurements.length;
             const sqDiffs = measurements.map(v => (v - mean) ** 2);
             const avgSqDiff = sqDiffs.reduce((a, b) => a + b, 0) / measurements.length;
             const stdDev = Math.sqrt(avgSqDiff);
-            const pass = mean >= 0.995 && mean <= 1.005 && stdDev <= 0.006;
-            return { mean, stdDev, pass };
+            
+            // Industry standard: Mean should be within ±0.5% of 1.0g, CV should be ≤0.6%
+            const cv = (stdDev / mean) * 100;
+            const meanWithinRange = mean >= 0.995 && mean <= 1.005;
+            const cvAcceptable = cv <= 0.6;
+            const pass = meanWithinRange && cvAcceptable;
+            
+            return { mean, stdDev, cv, pass };
         }
 
         // --- RENDER LOOP & HELPERS ---
 
+        // Makes grabbable objects glow when a controller is nearby.
         function handleProximityHighlights() {
             const highlightColor = new THREE.Color(CBRE_HIGHLIGHT_GREEN);
             const highlightIntensity = 0.5;
@@ -683,23 +1708,28 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 }
                 
                 obj.traverse(child => {
-                    if(child.isMesh) {
-                        if (!child.material.emissive) {
-                            child.material.emissive = new THREE.Color(0x000000);
-                        }
-                        if(isHighlighted) {
-                            child.material.emissive.set(highlightColor);
-                            if (child.material.emissiveIntensity !== undefined) {
-                                child.material.emissiveIntensity = highlightIntensity;
+                    if(child.isMesh && child.material) {
+                        try {
+                            if (!child.material.emissive) {
+                                child.material.emissive = new THREE.Color(0x000000);
                             }
-                        } else {
-                            child.material.emissive.set(0x000000);
+                            if(isHighlighted) {
+                                child.material.emissive.set(highlightColor);
+                                if (child.material.emissiveIntensity !== undefined) {
+                                    child.material.emissiveIntensity = highlightIntensity;
+                                }
+                            } else {
+                                child.material.emissive.set(0x000000);
+                            }
+                        } catch (e) {
+                            console.warn('Could not modify material emissive property:', e);
                         }
                     }
                 });
             });
         }
 
+        // Highlights UI buttons when pointed at by a controller.
         function handleControllerRaycasting() {
             const raycaster = new THREE.Raycaster();
             const tempMatrix = new THREE.Matrix4();
@@ -709,14 +1739,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                  tempMatrix.identity().extractRotation(controller.matrixWorld);
                  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
                  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-                 const intersects = raycaster.intersectObjects([uiTareButton, resetButton]);
+                 const intersects = raycaster.intersectObjects([tareButton, resetButton]);
                  if (intersects.length > 0) {
                      pointedObject = intersects[0].object;
                  }
             });
 
             if (controllerPointingAt && controllerPointingAt !== pointedObject) {
-                 if(controllerPointingAt.name === 'uiTareButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
+                 if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
                  if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
             }
 
@@ -726,13 +1756,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             }
         }
 
+        // Checks if the weigh boat has been placed on the balance.
         function checkPlacementConditions() {
             if (gameState === 'START' && !grabbedObject) {
                 const weighBoatPhysObj = physicsObjects.find(p => p.mesh.name === 'weighBoat');
                 if (!weighBoatPhysObj) return;
                 const weighBoatBody = weighBoatPhysObj.body;
 
-                const balancePlateY = balancePos.y + 0.105;
+                const balancePlateY = balancePos.y + 0.055;
                 const distanceToBalance = weighBoatBody.position.distanceTo(new CANNON.Vec3(balancePos.x, balancePlateY, balancePos.z));
                 const isSettled = weighBoatBody.sleepState === CANNON.Body.SLEEPING || weighBoatBody.velocity.almostZero(0.05);
 
@@ -747,41 +1778,66 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 }
             }
         }
+        
+        // Check if weigh boat is on the balance (for mouse interactions)
+        function checkWeighBoatOnBalance() {
+            if (gameState === 'START' && weighBoat && balance) {
+                const weighBoatPos = weighBoat.getWorldPosition(new THREE.Vector3());
+                const balancePos = balance.getWorldPosition(new THREE.Vector3());
+                const distance = weighBoatPos.distanceTo(balancePos);
+                
+                if (distance < 0.3 && Math.abs(weighBoatPos.y - (balancePos.y + 0.1)) < 0.05) {
+                    setGameState('BOAT_ON_BALANCE');
+                }
+            }
+        }
 
         const clock = new THREE.Clock();
         let oldElapsedTime = 0;
 
+        // The main render loop, called 60-90 times per second.
         function render() {
             const elapsedTime = clock.getElapsedTime();
             const deltaTime = elapsedTime - oldElapsedTime;
             oldElapsedTime = elapsedTime;
 
+            // Step the physics world forward in time.
             if (world) {
                 world.step(1 / 60, deltaTime, 3);
             }
 
+            // If an object is being held, update its physics body to match the controller's position.
             if (grabbedObject) {
                 const { physicsObject, controller } = grabbedObject;
                 physicsObject.body.position.copy(controller.getWorldPosition(new THREE.Vector3()));
                 physicsObject.body.quaternion.copy(controller.getWorldQuaternion(new THREE.Quaternion()));
             }
 
+            // Sync all visual meshes with their corresponding physics bodies.
             for(const obj of physicsObjects) {
                 obj.mesh.position.copy(obj.body.position);
                 obj.mesh.quaternion.copy(obj.body.quaternion);
             }
             
+            // Check for specific game logic conditions, like object placement.
             checkPlacementConditions();
+            checkWeighBoatOnBalance();
 
+            // Update mouse controls if not in VR.
             if (!renderer.xr.isPresenting) {
                 orbitControls.update();
             }
 
+            // Handle VR-specific interactions if in VR.
             if (renderer.xr.isPresenting) {
                 handleProximityHighlights();
                 handleControllerRaycasting();
             }
-            updateTextPanel(vrBalanceDisplay, ["Balance", `${balanceReading.toFixed(4)} g`]);
+
+            // Update the balance display and render the scene.
+            if (vrBalanceDisplay) {
+                updateTextPanel(vrBalanceDisplay, ["Balance", `${balanceReading.toFixed(4)} g`]);
+            }
             renderer.render(scene, camera);
         }
 
@@ -791,6 +1847,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // Start the application.
         try {
             init();
         } catch (e) {
@@ -801,3 +1858,4 @@ Line: ${event.lineno}, Column: ${event.colno}`;
     </script>
 </body>
 </html>
+
