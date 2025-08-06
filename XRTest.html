@@ -986,14 +986,19 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             function tryLoadGLB() {
                 const currentPath = glbPaths[currentPathIndex];
                 console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);
-                
-                loader.load(currentPath, (gltf) => {
+                  loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Balance.glb:', gltf);
                     balance = gltf.scene;
                     
                     // Scale and position the balance
-                    balance.scale.setScalar(0.1); // Try smaller scale first
-                    balance.position.set(balancePos.x, balancePos.y, balancePos.z);
+                    balance.scale.setScalar(0.2); // Double the size (was 0.1, now 0.2)
+                    
+                    // Apply rotations: 90 degrees clockwise on Y-axis, then -15 degrees on Z-axis
+                    balance.rotation.y = -Math.PI / 2; // 90 degrees clockwise (negative for clockwise)
+                    balance.rotation.z = -15 * Math.PI / 180; // -15 degrees in radians
+                    
+                    // Raise by 20cm (0.2 units) and set position
+                    balance.position.set(balancePos.x, balancePos.y + 0.2, balancePos.z);
                     
                     // Log the structure of the loaded model
                     console.log('Balance structure:', balance);
