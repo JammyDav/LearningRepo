@@ -995,7 +995,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     
                     // Apply rotations: 90 degrees clockwise on Y-axis, then -15 degrees on Z-axis
                     balance.rotation.y = -Math.PI / 2; // 90 degrees clockwise (negative for clockwise)
-                    balance.rotation.z = -15 * Math.PI / 180; // -15 degrees in radians
+                    balance.rotation.z = 15 * Math.PI / 180; // -15 degrees in radians
                     
                     // Raise by 20cm (0.2 units) and set position
                     balance.position.set(balancePos.x, balancePos.y + 0.2, balancePos.z);
