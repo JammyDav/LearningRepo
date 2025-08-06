@@ -1119,9 +1119,101 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             balanceBody.position.copy(balance.position);
             balanceBody.name = "balance";
             world.addBody(balanceBody);
+        }        function createBeaker() {
+            // For local file access, try GLTFLoader first
+            console.log('Attempting to load Water.glb directly with GLTFLoader...');
+            loadBeakerWithGLTF();
         }
-
-        function createBeaker() {
+        
+        function loadBeakerWithGLTF() {
+            const loader = new GLTFLoader();
+            
+            // Add detailed logging
+            console.log('Attempting to load Water.glb...');
+            
+            // Try multiple path formats for local file access
+            const glbPaths = [
+                './Water.glb',
+                'Water.glb',
+                window.location.href.replace('index.html', 'Water.glb')
+            ];
+            
+            let currentPathIndex = 0;
+            
+            function tryLoadGLB() {
+                const currentPath = glbPaths[currentPathIndex];
+                console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);
+                
+                loader.load(currentPath, (gltf) => {
+                    console.log('Successfully loaded Water.glb:', gltf);
+                    beaker = gltf.scene;
+                    
+                    // Scale and position the beaker
+                    beaker.scale.setScalar(0.1); // Adjust scale as needed
+                    beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
+                    
+                    // Log the structure of the loaded model
+                    console.log('Beaker structure:', beaker);
+                    console.log('Beaker children:', beaker.children);
+                    
+                    // Enable shadows for all meshes in the model
+                    beaker.traverse((child) => {
+                        if (child.isMesh) {
+                            console.log('Found mesh:', child.name, child.material);
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            // Enhance materials if needed
+                            if (child.material) {
+                                child.material.envMapIntensity = 0.5;
+                            }
+                        }
+                    });
+                    
+                    scene.add(beaker);
+                    console.log('Beaker added to scene');
+                    
+                }, (progress) => {
+                    const percent = (progress.loaded / progress.total * 100);
+                    console.log('Beaker loading progress:', percent + '%');
+                    
+                    // Update loading screen text
+                    const loadingText = document.querySelector('.loading-text');
+                    if (loadingText && percent < 100) {
+                        loadingText.textContent = `Loading Water Model... ${percent.toFixed(0)}%`;
+                    }
+                    
+                }, (error) => {
+                    console.error(`Failed to load GLB with path ${currentPath}:`, error);
+                    
+                    // Check if this is a CORS error
+                    if (error.message && error.message.includes('CORS')) {
+                        console.log('CORS error detected - this happens when loading from file:// URLs');
+                    }
+                    
+                    // Try next path
+                    currentPathIndex++;
+                    if (currentPathIndex < glbPaths.length) {
+                        console.log('Trying next path...');
+                        tryLoadGLB();
+                    } else {
+                        console.error('All GLB loading attempts failed:', error);
+                        console.error('Error type:', error.constructor.name);
+                        console.error('Error message:', error.message);
+                        
+                        console.log('Falling back to geometric beaker...');
+                        
+                        // Fallback to creating geometric beaker if all GLB attempts fail
+                        createGeometricBeaker();
+                    }
+                });
+            }
+            
+            tryLoadGLB();
+        }
+        
+        // Fallback function to create the original geometric beaker
+        function createGeometricBeaker() {
             const beakerMat = new THREE.MeshPhysicalMaterial({ 
                 color: CBRE_LIGHT_GREY, 
                 transmission: 0.9, 
