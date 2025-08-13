@@ -451,13 +451,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_DARK_GREY = '#435254';
         const CBRE_LIGHT_GREY = '#CAD1D3';
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
-        const METALLIC_SILVER = '#E5E7EB';
-
-        const benchPos = { x: 0, y: 0.4, z: -0.8 };
-        const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z };
-        const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z };
-        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.4 };
-        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z - 0.2 };
+        const METALLIC_SILVER = '#E5E7EB';        const benchPos = { x: 0, y: 0.4, z: -0.8 };
+        const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z + 0.3 }; // Moved 30cm closer to user
+        const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z + 0.3 }; // Moved 30cm closer to user
+        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.5 }; // Moved 10cm closer to user
+        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z + 0.4 }; // Moved 20cm closer to user
 
         // --- SIMULATION STATE VARIABLES ---
         let gameState = 'INIT';
@@ -1280,16 +1278,16 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);                loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Balance.glb:', gltf);
                     balance = gltf.scene;
-                    
-                    // Scale and position the balance
+                      // Scale and position the balance
                     balance.scale.setScalar(0.2); // Double the size (was 0.1, now 0.2)
                     
-                    // Apply rotations: 90 degrees clockwise on Y-axis, then -15 degrees on Z-axis
+                    // Apply rotations: 90 degrees clockwise on Y-axis, then rotate towards user by 5 degrees
                     balance.rotation.y = -Math.PI / 2; // 90 degrees clockwise (negative for clockwise)
-                    balance.rotation.z = 15 * Math.PI / 180; // -15 degrees in radians
+                    balance.rotation.z = 10 * Math.PI / 180; // Reduced from 15 to 10 degrees, tilting towards user
+                    balance.rotation.x = 5 * Math.PI / 180; // 5 degrees towards user
                     
-                    // Raise by 20cm (0.2 units) and set position
-                    balance.position.set(balancePos.x, balancePos.y + 0.1, balancePos.z);
+                    // Lower onto table - reduce the height offset
+                    balance.position.set(balancePos.x, balancePos.y - 0.0, balancePos.z); // Removed the +0.1 offset
                     
                     // Log the structure of the loaded model
                     console.log('Balance structure:', balance);
