@@ -452,10 +452,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_LIGHT_GREY = '#CAD1D3';
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
         const METALLIC_SILVER = '#E5E7EB';        const benchPos = { x: 0, y: 0.4, z: -0.8 };
-        const balancePos = { x: -0.5, y: benchPos.y + 0.055, z: benchPos.z + 0.3 }; // Moved 30cm closer to user
+        const balancePos = { x: -0.5, y: benchPos.y + 0.105, z: benchPos.z + 0.3 }; // Raised by 5cm (0.05)
         const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z + 0.3 }; // Moved 30cm closer to user
         const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.5 }; // Moved 10cm closer to user
-        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z + 0.4 }; // Moved 20cm closer to user
+        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z + 0.2 }; // Moved back 20cm from weigh boat
 
         // --- SIMULATION STATE VARIABLES ---
         let gameState = 'INIT';
