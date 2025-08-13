@@ -464,9 +464,298 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         let measurements = [];
         const requiredMeasurements = 5;
         let balanceReading = 0.0;
-        let isPipetteFull = false;
+        let isPipetteFull = false;        const sceneContainer = document.getElementById('scene-container');
 
-        const sceneContainer = document.getElementById('scene-container');
+        // --- VR PERFORMANCE OPTIMIZATION FUNCTIONS ---
+        
+        // VR Performance monitoring and optimization
+        let vrPerformanceData = {
+            frameRate: 0,
+            frameCount: 0,
+            lastTime: 0,
+            isQuest: false,
+            lowPerformanceMode: false
+        };
+
+        // Detect if running on Quest device
+        function detectQuest() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isOculus = userAgent.includes('oculus') || userAgent.includes('quest');
+            const isMobile = /android|iphone|ipad/.test(userAgent);
+            vrPerformanceData.isQuest = isOculus || (isMobile && navigator.xr);
+            console.log('Quest device detected:', vrPerformanceData.isQuest);
+            return vrPerformanceData.isQuest;
+        }        // Monitor VR performance and switch to low-performance mode if needed
+        function monitorVRPerformance() {
+            if (!renderer.xr.isPresenting) return;
+            
+            const currentTime = performance.now();
+            vrPerformanceData.frameCount++;
+            
+            if (currentTime - vrPerformanceData.lastTime >= 1000) { // Every second
+                vrPerformanceData.frameRate = vrPerformanceData.frameCount;
+                vrPerformanceData.frameCount = 0;
+                vrPerformanceData.lastTime = currentTime;
+                
+                // Adaptive performance scaling for Quest
+                if (vrPerformanceData.isQuest) {
+                    if (vrPerformanceData.frameRate < 60 && !vrPerformanceData.lowPerformanceMode) {
+                        console.warn('🐌 Low framerate detected:', vrPerformanceData.frameRate, 'FPS. Enabling performance mode.');
+                        enableLowPerformanceMode();
+                    } else if (vrPerformanceData.frameRate < 45) {
+                        // Emergency performance mode - very aggressive optimizations
+                        console.error('🚨 Critical framerate detected:', vrPerformanceData.frameRate, 'FPS. Enabling emergency mode.');
+                        enableEmergencyPerformanceMode();
+                    }
+                }
+                
+                // Log performance metrics every 5 seconds in VR
+                if ((currentTime / 1000) % 5 < 1) {
+                    console.log(`📊 VR Performance: ${vrPerformanceData.frameRate} FPS, Quest: ${vrPerformanceData.isQuest}, Low Mode: ${vrPerformanceData.lowPerformanceMode}`);
+                }
+            }
+        }
+        
+        // Emergency performance mode for very low framerates
+        function enableEmergencyPerformanceMode() {
+            console.log('🚨 Enabling emergency Quest performance mode...');
+            
+            // Ultra-low pixel ratio
+            renderer.setPixelRatio(0.5);
+            
+            // Disable all non-essential rendering
+            renderer.shadowMap.enabled = false;
+            renderer.antialias = false;
+            
+            // Simplify scene by hiding complex objects
+            scene.traverse((child) => {
+                if (child.isMesh) {
+                    // Hide very complex meshes
+                    if (child.geometry && child.geometry.attributes.position.count > 1000) {
+                        child.visible = false;
+                    }
+                    
+                    // Use most basic materials
+                    if (child.material && child.material.type !== 'MeshBasicMaterial') {
+                        child.material = new THREE.MeshBasicMaterial({
+                            color: child.material.color || 0x888888
+                        });
+                    }
+                }
+            });
+            
+            // Reduce physics even further
+            if (world) {
+                world.solver.iterations = 3;
+            }
+            
+            console.log('🚨 Emergency performance mode enabled');
+        }// Enable aggressive performance optimizations for Quest
+        function enableLowPerformanceMode() {
+            if (vrPerformanceData.lowPerformanceMode) return; // Already enabled
+            
+            vrPerformanceData.lowPerformanceMode = true;
+            console.log('🚀 Enabling Quest VR performance optimizations...');
+            
+            // Reduce renderer quality
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio * 0.7, 1.0));
+            renderer.shadowMap.enabled = false;
+            renderer.physicallyCorrectLights = false;
+            
+            // Reduce anti-aliasing for Quest
+            renderer.antialias = false;
+            
+            // Optimize renderer settings for mobile VR
+            renderer.sortObjects = false; // Disable sorting for better performance
+            renderer.autoClear = true;
+            renderer.autoClearColor = true;
+            renderer.autoClearDepth = true;
+            renderer.autoClearStencil = false;
+            
+            // Reduce lighting quality
+            scene.traverse((child) => {
+                if (child.isLight) {
+                    if (child.type === 'AmbientLight') {
+                        child.intensity *= 0.7;
+                    } else if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
+                        child.intensity *= 0.8;
+                        child.castShadow = false;
+                        
+                        // Reduce shadow map size
+                        if (child.shadow && child.shadow.mapSize) {
+                            child.shadow.mapSize.width = 256;
+                            child.shadow.mapSize.height = 256;
+                        }
+                    }
+                }
+            });
+            
+            // Optimize all models in scene
+            scene.traverse((child) => {
+                if (child.isMesh) {
+                    // Disable shadows completely
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                    
+                    // Enable frustum culling
+                    child.frustumCulled = true;
+                    
+                    // Simplify materials
+                    if (child.material) {
+                        // Create simplified material for Quest
+                        if (child.material.type !== 'MeshBasicMaterial') {
+                            const simpleMat = new THREE.MeshLambertMaterial({
+                                color: child.material.color || 0xffffff,
+                                transparent: child.material.transparent,
+                                opacity: child.material.opacity
+                            });
+                            
+                            // Copy essential properties only
+                            if (child.material.map) simpleMat.map = child.material.map;
+                            
+                            child.material = simpleMat;
+                        }
+                        
+                        // Reduce environment map intensity
+                        if (child.material.envMapIntensity !== undefined) {
+                            child.material.envMapIntensity *= 0.3;
+                        }
+                        
+                        // Disable expensive material features
+                        if (child.material.transmission !== undefined) {
+                            child.material.transmission = 0;
+                        }
+                        if (child.material.clearcoat !== undefined) {
+                            child.material.clearcoat = 0;
+                        }
+                        if (child.material.sheen !== undefined) {
+                            child.material.sheen = 0;
+                        }
+                        
+                        child.material.needsUpdate = true;
+                    }
+                    
+                    // Simplify geometry for very high poly objects
+                    if (child.geometry && child.geometry.attributes.position.count > 2000) {
+                        child.geometry.computeBoundingSphere();
+                        if (child.geometry.boundingSphere.radius < 0.1) {
+                            // For small objects, use lower level of detail
+                            const posCount = child.geometry.attributes.position.count;
+                            console.log(`Simplifying small object: ${child.name}, vertices: ${posCount}`);
+                        }
+                    }
+                }
+            });
+            
+            // Reduce physics simulation quality for Quest
+            if (world) {
+                world.solver.iterations = 5; // Reduce from 10
+                world.broadphase = new CANNON.SAPBroadphase(world); // Use faster broadphase
+            }
+            
+            console.log('✅ Quest VR performance mode enabled');
+        }        // Initialize VR with Quest-specific optimizations
+        function initVROptimizations() {
+            detectQuest();
+            
+            // Configure renderer for Quest if detected
+            if (vrPerformanceData.isQuest) {
+                // Pre-configure renderer for Quest
+                renderer.capabilities.maxTextures = Math.min(renderer.capabilities.maxTextures, 8);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.0));
+                
+                // Enable texture compression if available
+                const gl = renderer.getContext();
+                const extensions = {
+                    astc: gl.getExtension('WEBGL_compressed_texture_astc'),
+                    etc: gl.getExtension('WEBGL_compressed_texture_etc'),
+                    s3tc: gl.getExtension('WEBGL_compressed_texture_s3tc')
+                };
+                
+                if (extensions.astc || extensions.etc || extensions.s3tc) {
+                    console.log('📦 Texture compression available for Quest');
+                }
+            }
+            
+            // Add Quest-specific session options and event listeners
+            if (renderer.xr) {
+                renderer.xr.addEventListener('sessionstart', () => {
+                    console.log('🥽 VR session started');
+                    
+                    // Apply immediate Quest optimizations
+                    if (vrPerformanceData.isQuest) {
+                        console.log('🎮 Applying Quest optimizations...');
+                        renderer.setPixelRatio(Math.min(window.devicePixelRatio * 0.8, 1.0));
+                        
+                        // Optimize texture filtering
+                        scene.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                if (child.material.map) {
+                                    child.material.map.minFilter = THREE.LinearFilter;
+                                    child.material.map.magFilter = THREE.LinearFilter;
+                                    child.material.map.generateMipmaps = false;
+                                }
+                                if (child.material.normalMap) {
+                                    child.material.normalMap.minFilter = THREE.LinearFilter;
+                                    child.material.normalMap.magFilter = THREE.LinearFilter;
+                                    child.material.normalMap.generateMipmaps = false;
+                                }
+                            }
+                        });
+                        
+                        // Start performance monitoring after a short delay
+                        setTimeout(() => {
+                            vrPerformanceData.lastTime = performance.now();
+                            console.log('📊 Starting VR performance monitoring');
+                        }, 2000);
+                        
+                        // Enable low performance mode immediately on Quest
+                        setTimeout(() => {
+                            if (vrPerformanceData.isQuest) {
+                                enableLowPerformanceMode();
+                            }
+                        }, 1000);
+                    }
+                });
+                
+                renderer.xr.addEventListener('sessionend', () => {
+                    console.log('🥽 VR session ended');
+                    // Restore full quality for desktop
+                    renderer.setPixelRatio(window.devicePixelRatio);
+                    renderer.shadowMap.enabled = true;
+                    renderer.physicallyCorrectLights = true;
+                    vrPerformanceData.lowPerformanceMode = false;
+                    
+                    // Restore physics quality
+                    if (world) {
+                        world.solver.iterations = 10;
+                        world.broadphase = new CANNON.NaiveBroadphase();
+                    }
+                    
+                    // Restore lighting and materials
+                    scene.traverse((child) => {
+                        if (child.isLight) {
+                            if (child.type === 'AmbientLight') {
+                                child.intensity /= 0.7;
+                            } else if (child.type === 'DirectionalLight' || child.type === 'SpotLight') {
+                                child.intensity /= 0.8;
+                                child.castShadow = true;
+                            }
+                        }
+                        
+                        if (child.isMesh) {
+                            child.visible = true; // Restore visibility
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            if (child.material) {
+                                child.material.needsUpdate = true;
+                            }
+                        }
+                    });
+                });
+            }
+        }
 
         // --- INITIALIZATION ---
         // The main function that sets up the entire experience.
@@ -481,9 +770,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            renderer.xr.enabled = true;
+            renderer.shadowMap.enabled = true;            renderer.xr.enabled = true;
             sceneContainer.appendChild(renderer.domElement);
+            
+            // Initialize VR with Quest-specific optimizations
+            initVROptimizations();
+            
             document.body.appendChild(VRButton.createButton(renderer, onSessionStart, onSessionEnd));
             
             // Setup mouse controls for browser viewing.
@@ -985,8 +1277,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             
             function tryLoadGLB() {
                 const currentPath = glbPaths[currentPathIndex];
-                console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);
-                  loader.load(currentPath, (gltf) => {
+                console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);                loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Balance.glb:', gltf);
                     balance = gltf.scene;
                     
@@ -1004,16 +1295,43 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     console.log('Balance structure:', balance);
                     console.log('Balance children:', balance.children);
                     
-                    // Enable shadows for all meshes in the model
+                    // VR OPTIMIZATION: Optimize meshes and materials for VR performance
                     balance.traverse((child) => {
                         if (child.isMesh) {
                             console.log('Found mesh:', child.name, child.material);
-                            child.castShadow = true;
-                            child.receiveShadow = true;
                             
-                            // Enhance materials if needed
+                            // VR Performance: Disable shadows in VR mode to improve performance
+                            if (renderer.xr.isPresenting) {
+                                child.castShadow = false;
+                                child.receiveShadow = false;
+                            } else {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                            
+                            // Optimize materials for VR
                             if (child.material) {
-                                child.material.envMapIntensity = 0.5;
+                                // Reduce environment map intensity for VR
+                                child.material.envMapIntensity = renderer.xr.isPresenting ? 0.2 : 0.5;
+                                
+                                // Force material updates to be less frequent in VR
+                                if (renderer.xr.isPresenting) {
+                                    child.material.needsUpdate = false;
+                                }
+                                
+                                // Simplify materials if they are too complex
+                                if (child.material.map && child.material.map.image) {
+                                    const originalSize = child.material.map.image.width;
+                                    if (originalSize > 512 && renderer.xr.isPresenting) {
+                                        console.log('Large texture detected, consider using lower resolution for VR');
+                                    }
+                                }
+                            }
+                            
+                            // Optimize geometry for VR if it has too many vertices
+                            if (child.geometry && child.geometry.attributes.position.count > 10000) {
+                                console.log('High poly mesh detected:', child.name, 'vertices:', child.geometry.attributes.position.count);
+                                console.log('Consider using a lower poly version for VR');
                             }
                         }
                     });
@@ -1148,8 +1466,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             function tryLoadGLB() {
                 const currentPath = glbPaths[currentPathIndex];
                 console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);
-                
-                loader.load(currentPath, (gltf) => {
+                  loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Water.glb:', gltf);
                     beaker = gltf.scene;
                     
@@ -1161,16 +1478,43 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     console.log('Beaker structure:', beaker);
                     console.log('Beaker children:', beaker.children);
                     
-                    // Enable shadows for all meshes in the model
+                    // VR OPTIMIZATION: Optimize meshes and materials for VR performance
                     beaker.traverse((child) => {
                         if (child.isMesh) {
                             console.log('Found mesh:', child.name, child.material);
-                            child.castShadow = true;
-                            child.receiveShadow = true;
                             
-                            // Enhance materials if needed
+                            // VR Performance: Disable shadows in VR mode to improve performance
+                            if (renderer.xr.isPresenting) {
+                                child.castShadow = false;
+                                child.receiveShadow = false;
+                            } else {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                            
+                            // Optimize materials for VR
                             if (child.material) {
-                                child.material.envMapIntensity = 0.5;
+                                // Reduce environment map intensity for VR
+                                child.material.envMapIntensity = renderer.xr.isPresenting ? 0.1 : 0.5;
+                                
+                                // Force material updates to be less frequent in VR
+                                if (renderer.xr.isPresenting) {
+                                    child.material.needsUpdate = false;
+                                }
+                                
+                                // For transparent materials (like water/glass), reduce complexity in VR
+                                if (child.material.transparent || child.material.transmission) {
+                                    if (renderer.xr.isPresenting) {
+                                        child.material.transmission = Math.min(child.material.transmission || 0, 0.5);
+                                        child.material.roughness = Math.max(child.material.roughness || 0, 0.3);
+                                    }
+                                }
+                            }
+                            
+                            // Optimize geometry for VR if it has too many vertices
+                            if (child.geometry && child.geometry.attributes.position.count > 5000) {
+                                console.log('High poly mesh detected:', child.name, 'vertices:', child.geometry.attributes.position.count);
+                                console.log('Consider using a lower poly version for VR');
                             }
                         }
                     });
@@ -1890,13 +2234,16 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         const clock = new THREE.Clock();
-        let oldElapsedTime = 0;
-
-        // The main render loop, called 60-90 times per second.
+        let oldElapsedTime = 0;        // The main render loop, called 60-90 times per second.
         function render() {
             const elapsedTime = clock.getElapsedTime();
             const deltaTime = elapsedTime - oldElapsedTime;
             oldElapsedTime = elapsedTime;
+
+            // Monitor VR performance for Quest optimization
+            if (renderer.xr.isPresenting) {
+                monitorVRPerformance();
+            }
 
             // Step the physics world forward in time.
             if (world) {
