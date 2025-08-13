@@ -1332,12 +1332,11 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                                 console.log('Consider using a lower poly version for VR');
                             }
                         }
-                    });
-                      scene.add(balance);
+                    });                    scene.add(balance);
                     console.log('Balance added to scene');
                     
-                    // Create balance display panel with TARE button
-                    createBalanceDisplay();
+                    // Create balance display panel with TARE button (for GLB model)
+                    createBalanceDisplay(true);
                     
                     // Create physics body for the balance
                     const balanceBody = new CANNON.Body({ mass: 0 });
@@ -1413,8 +1412,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             balance = group;            balance.position.set(balancePos.x, balancePos.y, balancePos.z);
             scene.add(balance);
             
-            // Create balance display with TARE button
-            createBalanceDisplay();
+            // Create balance display with TARE button (for geometric model)
+            createBalanceDisplay(false);
 
             // Create a compound static physics body for the balance.
             const balanceBody = new CANNON.Body({ mass: 0 });
@@ -1426,9 +1425,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             balanceBody.name = "balance";
             world.addBody(balanceBody);
         }
-        
-        // Create balance display with weight readout and TARE button
-        function createBalanceDisplay() {
+          // Create balance display with weight readout and TARE button
+        function createBalanceDisplay(isGLBModel = false) {
             // Create display panel group
             const displayGroup = new THREE.Group();
             displayGroup.name = 'balanceDisplay';
@@ -1482,13 +1480,22 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             displayGroup.add(tareLabel);
             
             // Position the entire display relative to the balance
-            displayGroup.position.set(0, 0.08, 0.1);
-            displayGroup.rotation.x = -Math.PI / 6; // Tilt display towards user
+            if (isGLBModel) {
+                // Adjusted positioning for GLB model with transformations (scale 0.2, rotations)
+                // Since the GLB model is scaled up and rotated, we need to adjust the display position
+                displayGroup.position.set(0.3, 0.4, -0.2); // Positioned to be visible on the GLB balance
+                displayGroup.rotation.x = -Math.PI / 4; // Slightly more tilted for better visibility
+                displayGroup.scale.setScalar(2.5); // Scale up to match the larger GLB balance
+            } else {
+                // Original positioning for geometric balance
+                displayGroup.position.set(0, 0.08, 0.1);
+                displayGroup.rotation.x = -Math.PI / 6; // Tilt display towards user
+            }
             
             // Add to balance
             balance.add(displayGroup);
             
-            console.log('✅ Balance display with TARE button created');
+            console.log('✅ Balance display with TARE button created', isGLBModel ? '(for GLB model)' : '(for geometric model)');
         }
         
         function createBeaker() {
