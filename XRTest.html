@@ -1478,14 +1478,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             tareLabel.position.set(0.05, -0.025, 0.02);
             tareLabel.scale.set(0.03, 0.015, 1);
             displayGroup.add(tareLabel);
-            
-            // Position the entire display relative to the balance
+              // Position the entire display relative to the balance
             if (isGLBModel) {
                 // Adjusted positioning for GLB model with transformations (scale 0.2, rotations)
-                // Since the GLB model is scaled up and rotated, we need to adjust the display position
-                displayGroup.position.set(0.3, 0.4, -0.2); // Positioned to be visible on the GLB balance
-                displayGroup.rotation.x = -Math.PI / 4; // Slightly more tilted for better visibility
-                displayGroup.scale.setScalar(2.5); // Scale up to match the larger GLB balance
+                // Move it forward (positive Z), down (negative Y), and center horizontally
+                displayGroup.position.set(0, -0.1, 0.4); // Forward and down from balance
+                displayGroup.rotation.x = -Math.PI / 6; // Tilt towards user (less aggressive)
+                displayGroup.rotation.y = Math.PI; // Rotate 180 degrees to face user
+                displayGroup.scale.setScalar(2.0); // Scale down slightly for better proportion
             } else {
                 // Original positioning for geometric balance
                 displayGroup.position.set(0, 0.08, 0.1);
