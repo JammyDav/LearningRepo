@@ -507,7 +507,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         
         // BALANCE DISPLAY POSITION (independent of balance transformations)
         const balanceDisplayPos = {
-            glb: { x: balancePos.x - 0.15, y: balancePos.y + 0.12, z: balancePos.z + 0.25 },
+            glb: { x: balancePos.x - 0, y: balancePos.y + 0, z: balancePos.z + 0.25 },
             geometric: { x: balancePos.x - 0.1, y: balancePos.y + 0.15, z: balancePos.z + 0.15 }
         };
         // GLB Model Display:
@@ -1569,7 +1569,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 );
                 
                 // === GLB MODEL DISPLAY ROTATIONS ===
-                displayGroup.rotation.x = -Math.PI / 6; // Tilt towards user (-30 degrees)
+                displayGroup.rotation.x = -Math.PI; // Tilt towards user (0 degrees)
                 displayGroup.rotation.y = Math.PI / 8;  // Slight angle toward balance (22.5 degrees)
                 
                 // === GLB MODEL DISPLAY SCALING ===
@@ -2103,12 +2103,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             context.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
             context.fillStyle = 'white';
             context.textBaseline = 'middle';
-            
-            if (panel === vrBalanceDisplay) {
+              if (panel === vrBalanceDisplay) {
                 context.textAlign = 'center';
-                context.font = `bold ${canvas.width/12}px 'Playfair Display'`;
+                // Increased font sizes to better fill the display panel
+                context.font = `bold ${canvas.width/8}px 'Playfair Display'`; // Increased from /12 to /8 for larger label text
                 context.fillText(lines[0], canvas.width/2, canvas.height * 0.3);
-                context.font = `bold ${canvas.width/7}px 'Lato'`;
+                context.font = `bold ${canvas.width/4.5}px 'Lato'`; // Increased from /7 to /4.5 for much larger weight text
                 context.fillText(lines[1], canvas.width/2, canvas.height * 0.7);
 
             } else if (lines.length === 1) {
