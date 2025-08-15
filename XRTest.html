@@ -451,11 +451,73 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         const CBRE_DARK_GREY = '#435254';
         const CBRE_LIGHT_GREY = '#CAD1D3';
         const CBRE_HIGHLIGHT_GREEN = '#006A4D';
-        const METALLIC_SILVER = '#E5E7EB';        const benchPos = { x: 0, y: 0.4, z: -0.8 };
-        const balancePos = { x: -0.5, y: benchPos.y + 0.105, z: benchPos.z + 0.3 }; // Raised by 5cm (0.05)
-        const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z + 0.3 }; // Moved 30cm closer to user
-        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.5 }; // Moved 10cm closer to user
-        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z + 0.2 }; // Moved back 20cm from weigh boat
+        const METALLIC_SILVER = '#E5E7EB';        // ==========================================
+        // === POSITIONING REFERENCE GUIDE ===
+        // ==========================================
+        // 
+        // COORDINATE SYSTEM:
+        // - X-axis: left(-) / right(+) - negative values move left, positive move right
+        // - Y-axis: down(-) / up(+) - negative values move down, positive move up  
+        // - Z-axis: back(-) / forward(+) - negative values move away from user, positive toward user
+        //
+        // ROTATION SYSTEM (in radians):
+        // - X-axis rotation: tilts object forward(-) / backward(+)
+        // - Y-axis rotation: rotates object left(-) / right(+) 
+        // - Z-axis rotation: rolls object counterclockwise(-) / clockwise(+)
+        //
+        // COMMON VALUES:
+        // - Math.PI = 180 degrees
+        // - Math.PI/2 = 90 degrees  
+        // - Math.PI/4 = 45 degrees
+        // - Math.PI/6 = 30 degrees
+        //
+        // ==========================================
+
+        // === MAIN POSITIONING CONSTANTS ===
+        // Note: X = left(-)/right(+), Y = down(-)/up(+), Z = back(-)/forward(+)
+        
+        // LABORATORY BENCH POSITION
+        const benchPos = { x: 0, y: 0.4, z: -0.8 };
+        // X: 0 = centered horizontally
+        // Y: 0.4 = height above floor (40cm)
+        // Z: -0.8 = distance from user (80cm back)
+        
+        // BALANCE POSITION (analytical scale)
+        const balancePos = { x: -0.5, y: benchPos.y + 0.105, z: benchPos.z + 0.3 };
+        // X: -0.5 = left side of bench (50cm left of center)
+        // Y: benchPos.y + 0.105 = raised 10.5cm above bench surface
+        // Z: benchPos.z + 0.3 = 30cm closer to user than bench back edge
+        
+        // BEAKER POSITION (water container)
+        const beakerPos = { x: 0.5, y: benchPos.y + 0.1, z: benchPos.z + 0.3 };
+        // X: 0.5 = right side of bench (50cm right of center)
+        // Y: benchPos.y + 0.1 = raised 10cm above bench surface
+        // Z: benchPos.z + 0.3 = 30cm closer to user than bench back edge
+        
+        // WEIGH BOAT STARTING POSITION
+        const weighBoatStartPos = { x: 0, y: benchPos.y + 0.1, z: benchPos.z + 0.5 };
+        // X: 0 = centered horizontally on bench
+        // Y: benchPos.y + 0.1 = raised 10cm above bench surface
+        // Z: benchPos.z + 0.5 = 20cm closer to user than bench back edge (for easy grabbing)
+          // PIPETTE STARTING POSITION
+        const pipetteStartPos = { x: 0, y: benchPos.y + 0.3, z: benchPos.z + 0.2 };
+        // X: 0 = centered horizontally
+        // Y: benchPos.y + 0.3 = raised 30cm above bench (standing upright)
+        // Z: benchPos.z + 0.2 = 20cm back from weigh boat position
+        
+        // BALANCE DISPLAY POSITION (independent of balance transformations)
+        const balanceDisplayPos = {
+            glb: { x: balancePos.x - 0.15, y: balancePos.y + 0.12, z: balancePos.z + 0.25 },
+            geometric: { x: balancePos.x - 0.1, y: balancePos.y + 0.15, z: balancePos.z + 0.15 }
+        };
+        // GLB Model Display:
+        // X: balancePos.x - 0.15 = 15cm left of balance center for easy visibility
+        // Y: balancePos.y + 0.12 = 12cm above balance position (clear of transformations)
+        // Z: balancePos.z + 0.25 = 25cm forward from balance center (toward user)
+        // Geometric Model Display:
+        // X: balancePos.x - 0.1 = 10cm left of balance center
+        // Y: balancePos.y + 0.15 = 15cm above balance position
+        // Z: balancePos.z + 0.15 = 15cm forward from balance center
 
         // --- SIMULATION STATE VARIABLES ---
         let gameState = 'INIT';
@@ -1176,9 +1238,10 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             floor.rotation.x = -Math.PI / 2;
             floor.receiveShadow = true;
             scene.add(floor);
-            
-            // Enhanced workbench with better materials
+              // === LABORATORY BENCH CREATION ===
+            // Main bench surface - this is the primary work surface
             const benchGeom = new THREE.BoxGeometry(2.5, 0.1, 1.2);
+            // Size: 2.5m wide x 0.1m thick x 1.2m deep
             const benchMat = new THREE.MeshStandardMaterial({ 
                 color: '#2c3e40',
                 metalness: 0.2, 
@@ -1186,7 +1249,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 envMapIntensity: 0.5
             });
             bench = new THREE.Mesh(benchGeom, benchMat);
+            
+            // BENCH POSITION: Apply the main bench position constants
             bench.position.set(benchPos.x, benchPos.y, benchPos.z);
+            // X: 0 = centered horizontally in lab space
+            // Y: 0.4 = height above floor (40cm - comfortable working height)
+            // Z: -0.8 = distance from user (80cm back for proper reach)
             bench.receiveShadow = true;
             bench.castShadow = true;
             scene.add(bench);
@@ -1277,17 +1345,21 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 const currentPath = glbPaths[currentPathIndex];
                 console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);                loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Balance.glb:', gltf);
-                    balance = gltf.scene;
-                      // Scale and position the balance
+                    balance = gltf.scene;                    // === BALANCE SCALING AND TRANSFORMATIONS (GLB MODEL) ===
                     balance.scale.setScalar(0.2); // Double the size (was 0.1, now 0.2)
                     
+                    // === BALANCE ROTATIONS ===
                     // Apply rotations: 90 degrees clockwise on Y-axis, then rotate towards user by 5 degrees
                     balance.rotation.y = -Math.PI / 2; // 90 degrees clockwise (negative for clockwise)
-                    balance.rotation.z = 10 * Math.PI / 180; // Reduced from 15 to 10 degrees, tilting towards user
-                    balance.rotation.x = 5 * Math.PI / 180; // 5 degrees towards user
+                    balance.rotation.z = 10 * Math.PI / 180; // 10 degrees backward tilt (Z-axis rotation)
+                    balance.rotation.x = 5 * Math.PI / 180; // 5 degrees towards user (X-axis rotation)
                     
-                    // Lower onto table - reduce the height offset
-                    balance.position.set(balancePos.x, balancePos.y - 0.0, balancePos.z); // Removed the +0.1 offset
+                    // === BALANCE POSITION ===
+                    // Apply position from balancePos constants
+                    balance.position.set(balancePos.x, balancePos.y - 0.0, balancePos.z);
+                    // X: -0.5 = left side of bench (50cm left of center)
+                    // Y: balancePos.y = raised above bench surface (no additional offset)
+                    // Z: balancePos.z = positioned on bench, moved closer to user
                     
                     // Log the structure of the loaded model
                     console.log('Balance structure:', balance);
@@ -1395,20 +1467,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         // Fallback function to create the original geometric balance
         function createGeometricBalance() {
             const group = new THREE.Group();
-            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
-            base.castShadow = true;
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.25), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));            base.castShadow = true;
             group.add(base);
             const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.01, 32), new THREE.MeshStandardMaterial({ color: METALLIC_SILVER, metalness: 0.8, roughness: 0.2 }));
             plate.position.y = 0.055;
             plate.castShadow = true;
             group.add(plate);
             
-            const tareButtonGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.01, 16);
-            const tareButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
-            tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
-            tareButton.name = 'tareButton';
-            tareButton.position.set(0.1, 0.055, 0.08);
-            group.add(tareButton);
+            // Note: TARE button is now part of the independent balance display
             balance = group;            balance.position.set(balancePos.x, balancePos.y, balancePos.z);
             scene.add(balance);
             
@@ -1448,18 +1514,24 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 color: 0x000000,
                 transparent: true,
                 opacity: 0.9
-            });
+            });            // === DISPLAY SCREEN POSITIONING ===
             const screen = new THREE.Mesh(screenGeom, screenMat);
             screen.position.set(0, 0.01, 0.011);
+            // X: 0 = centered on display panel
+            // Y: 0.01 = slightly above panel center (1cm up)
+            // Z: 0.011 = just in front of panel surface
             displayGroup.add(screen);
             
-            // Create weight display text panel
+            // === WEIGHT DISPLAY TEXT POSITIONING ===
             vrBalanceDisplay = createTextPanel(256, 128);
             vrBalanceDisplay.position.set(0, 0.01, 0.012);
+            // X: 0 = centered on display panel
+            // Y: 0.01 = slightly above panel center (1cm up)  
+            // Z: 0.012 = in front of screen surface
             vrBalanceDisplay.scale.set(0.12, 0.05, 1);
             displayGroup.add(vrBalanceDisplay);
             
-            // Create TARE button
+            // === TARE BUTTON CREATION AND POSITIONING ===
             const tareButtonGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.008, 16);
             const tareButtonMat = new THREE.MeshStandardMaterial({ 
                 color: CBRE_HIGHLIGHT_GREEN,
@@ -1469,33 +1541,57 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             tareButton = new THREE.Mesh(tareButtonGeom, tareButtonMat);
             tareButton.name = 'tareButton';
             tareButton.position.set(0.05, -0.025, 0.015);
+            // X: 0.05 = positioned to the right of display center (5cm right)
+            // Y: -0.025 = positioned below display center (2.5cm down)
+            // Z: 0.015 = positioned in front of panel surface (protruding button)
             tareButton.castShadow = true;
             displayGroup.add(tareButton);
             
-            // Create TARE button label
+            // === TARE BUTTON LABEL POSITIONING ===
             const tareLabel = createTextPanel(128, 64);
             updateTextPanel(tareLabel, ["TARE"]);
             tareLabel.position.set(0.05, -0.025, 0.02);
+            // X: 0.05 = matches TARE button position (5cm right of center)
+            // Y: -0.025 = matches TARE button position (2.5cm down)
+            // Z: 0.02 = in front of button for text visibility
             tareLabel.scale.set(0.03, 0.015, 1);
-            displayGroup.add(tareLabel);
-              // Position the entire display relative to the balance
+            displayGroup.add(tareLabel);        // === BALANCE DISPLAY POSITIONING (INDEPENDENT) ===
+            // Position the display using absolute world coordinates instead of relative to balance
+            // This makes positioning easier and independent of balance transformations
+            
             if (isGLBModel) {
-                // Adjusted positioning for GLB model with transformations (scale 0.2, rotations)
-                // Move it forward (positive Z), down (negative Y), and center horizontally
-                displayGroup.position.set(0, -0.1, 0.4); // Forward and down from balance
-                displayGroup.rotation.x = -Math.PI / 6; // Tilt towards user (less aggressive)
-                displayGroup.rotation.y = Math.PI; // Rotate 180 degrees to face user
-                displayGroup.scale.setScalar(2.0); // Scale down slightly for better proportion
+                // === GLB MODEL DISPLAY POSITIONING (WORLD COORDINATES) ===
+                // Use predefined constants for easy adjustment
+                displayGroup.position.set(
+                    balanceDisplayPos.glb.x,        // X: 15cm left of balance center
+                    balanceDisplayPos.glb.y,        // Y: 12cm above balance position 
+                    balanceDisplayPos.glb.z         // Z: 25cm forward from balance center
+                );
+                
+                // === GLB MODEL DISPLAY ROTATIONS ===
+                displayGroup.rotation.x = -Math.PI / 6; // Tilt towards user (-30 degrees)
+                displayGroup.rotation.y = Math.PI / 8;  // Slight angle toward balance (22.5 degrees)
+                
+                // === GLB MODEL DISPLAY SCALING ===
+                displayGroup.scale.setScalar(1.0); // Use normal scale for independent positioning
             } else {
-                // Original positioning for geometric balance
-                displayGroup.position.set(0, 0.08, 0.1);
-                displayGroup.rotation.x = -Math.PI / 6; // Tilt display towards user
+                // === GEOMETRIC MODEL DISPLAY POSITIONING (WORLD COORDINATES) ===
+                // Use predefined constants for easy adjustment
+                displayGroup.position.set(
+                    balanceDisplayPos.geometric.x,  // X: 10cm left of balance center
+                    balanceDisplayPos.geometric.y,  // Y: 15cm above balance position
+                    balanceDisplayPos.geometric.z   // Z: 15cm forward from balance center
+                );
+                
+                // === GEOMETRIC MODEL DISPLAY ROTATIONS ===
+                displayGroup.rotation.x = -Math.PI / 6; // Tilt display towards user (-30 degrees)
+                displayGroup.rotation.y = Math.PI / 8;  // Slight angle toward balance (22.5 degrees)
             }
             
-            // Add to balance
-            balance.add(displayGroup);
+            // Add directly to scene for independent positioning
+            scene.add(displayGroup);
             
-            console.log('✅ Balance display with TARE button created', isGLBModel ? '(for GLB model)' : '(for geometric model)');
+            console.log('✅ Balance display with TARE button created (independent positioning)', isGLBModel ? '(for GLB model)' : '(for geometric model)');
         }
         
         function createBeaker() {
@@ -1525,10 +1621,15 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                   loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Water.glb:', gltf);
                     beaker = gltf.scene;
+                      // === BEAKER SCALING AND POSITIONING (GLB MODEL) ===
+                    beaker.scale.setScalar(0.1); // Scale down to appropriate lab size
                     
-                    // Scale and position the beaker
-                    beaker.scale.setScalar(0.1); // Adjust scale as needed
+                    // === BEAKER POSITION ===
+                    // Apply position from beakerPos constants
                     beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
+                    // X: 0.5 = right side of bench (50cm right of center)
+                    // Y: beakerPos.y = raised above bench surface (10cm up)
+                    // Z: beakerPos.z = positioned on bench, moved closer to user
                     
                     // Log the structure of the loaded model
                     console.log('Beaker structure:', beaker);
@@ -1616,8 +1717,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             
             tryLoadGLB();
         }
-        
-        // Fallback function to create the original geometric beaker
+          // Fallback function to create the original geometric beaker
         function createGeometricBeaker() {
             const beakerMat = new THREE.MeshPhysicalMaterial({ 
                 color: CBRE_LIGHT_GREY, 
@@ -1627,30 +1727,58 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 opacity: 0.3
             });
             beaker = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.2, 32, 1, true), beakerMat);
+            
+            // === BEAKER POSITION (GEOMETRIC FALLBACK) ===
+            // Apply position from beakerPos constants
             beaker.position.set(beakerPos.x, beakerPos.y, beakerPos.z);
+            // X: 0.5 = right side of bench (50cm right of center)
+            // Y: beakerPos.y = raised above bench surface (10cm up)
+            // Z: beakerPos.z = positioned on bench, moved closer to user
+            
             scene.add(beaker);
+            
+            // === WATER INSIDE BEAKER POSITIONING ===
             const waterMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.7 });
             const water = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.18, 32), waterMat);
-            water.position.y = -0.01;
+            water.position.y = -0.01; // Slightly below beaker center
             beaker.add(water);
-        }
-
-        function createWeighBoat() {
+        }        function createWeighBoat() {
             const boatMat = new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY, side: THREE.DoubleSide });
             const group = new THREE.Group();
+            
+            // === WEIGH BOAT DIMENSIONS ===
             const baseWidth = 0.14, baseDepth = 0.1, wallHeight = 0.04, wallThickness = 0.005;
+            
+            // === WEIGH BOAT STRUCTURE CREATION ===
+            // Base of the boat
             const base = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallThickness, baseDepth), boatMat);
             base.position.y = wallThickness / 2; base.castShadow = true; group.add(base);
+            
+            // Front wall (toward user)
             const frontWall = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallHeight, wallThickness), boatMat);
             frontWall.position.set(0, wallHeight / 2, baseDepth / 2); frontWall.castShadow = true; group.add(frontWall);
+            
+            // Back wall (away from user)
             const backWall = new THREE.Mesh(new THREE.BoxGeometry(baseWidth, wallHeight, wallThickness), boatMat);
             backWall.position.set(0, wallHeight / 2, -baseDepth / 2); backWall.castShadow = true; group.add(backWall);
+            
+            // Left wall
             const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, baseDepth), boatMat);
             leftWall.position.set(-baseWidth / 2, wallHeight / 2, 0); leftWall.castShadow = true; group.add(leftWall);
+            
+            // Right wall
             const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, baseDepth), boatMat);
             rightWall.position.set(baseWidth / 2, wallHeight / 2, 0); rightWall.castShadow = true; group.add(rightWall);
+            
             weighBoat = group;
+            
+            // === WEIGH BOAT STARTING POSITION ===
+            // Apply position from weighBoatStartPos constants
             weighBoat.position.set(weighBoatStartPos.x, weighBoatStartPos.y, weighBoatStartPos.z);
+            // X: 0 = centered horizontally on bench (for easy grabbing)
+            // Y: weighBoatStartPos.y = raised above bench surface (10cm up)
+            // Z: weighBoatStartPos.z = positioned closer to user for easy access (50cm from bench back)
+            
             weighBoat.name = "weighBoat";
             scene.add(weighBoat);
             grabbableObjects.push(weighBoat);
@@ -1667,34 +1795,59 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             weighBoatBody.name = "weighBoat";
             world.addBody(weighBoatBody);
             physicsObjects.push({ mesh: weighBoat, body: weighBoatBody });
-            
-            console.log('✅ WeighBoat physics object created');
+              console.log('✅ WeighBoat physics object created');
             console.log('PhysicsObjects array now contains:', physicsObjects.length, 'objects');
 
+            // === DISPENSED WATER IN WEIGH BOAT ===
             const waterInBoatGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.01, 16);
             const waterInBoatMat = new THREE.MeshStandardMaterial({ color: '#63b3ed', transparent: true, opacity: 0.9 });
             const waterInBoat = new THREE.Mesh(waterInBoatGeo, waterInBoatMat);
             waterInBoat.name = 'dispensedWater';
-            waterInBoat.position.y = wallThickness;
-            waterInBoat.visible = false;
+            
+            // === DISPENSED WATER POSITIONING ===
+            waterInBoat.position.y = wallThickness; // Positioned at base level (just above boat bottom)
+            waterInBoat.visible = false; // Hidden until water is dispensed
             weighBoat.add(waterInBoat);
-        }
-
-        function createPipette() {
+        }        function createPipette() {
             const group = new THREE.Group();
+            
+            // === PIPETTE BODY CREATION ===
             const body = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
             group.add(body);
+            
+            // === PIPETTE PLUNGER POSITIONING ===
             const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.04, 16), new THREE.MeshStandardMaterial({ color: CBRE_GREEN }));
-            plunger.position.y = 0.17; plunger.name = 'plunger'; group.add(plunger);
+            plunger.position.y = 0.17; // Positioned at top of pipette body (17cm up from center)
+            plunger.name = 'plunger'; 
+            group.add(plunger);
+            
+            // === PIPETTE TIP POSITIONING ===
             const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.005, 0.08, 16), new THREE.MeshStandardMaterial({ color: CBRE_LIGHT_GREY }));
-            tip.position.y = -0.19; tip.name = 'pipetteTip'; group.add(tip);
+            tip.position.y = -0.19; // Positioned at bottom of pipette body (19cm down from center)
+            tip.name = 'pipetteTip'; 
+            group.add(tip);
+            
+            // === WATER INSIDE PIPETTE POSITIONING ===
             const waterInPipetteGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.28, 16);
             const waterInPipetteMat = new THREE.MeshStandardMaterial({ color: '#63b3ed' });
             const waterInPipette = new THREE.Mesh(waterInPipetteGeo, waterInPipetteMat);
-            waterInPipette.name = 'waterInPipette'; waterInPipette.position.y = -0.01; waterInPipette.visible = false; group.add(waterInPipette);
+            waterInPipette.name = 'waterInPipette'; 
+            waterInPipette.position.y = -0.01; // Slightly below pipette center
+            waterInPipette.visible = false; // Hidden until water is aspirated
+            group.add(waterInPipette);
+            
             pipette = group;
-            pipette.scale.set(1.2, 1.2, 1.2);
+            
+            // === PIPETTE SCALING ===
+            pipette.scale.set(1.2, 1.2, 1.2); // Scale up slightly for better visibility
+            
+            // === PIPETTE STARTING POSITION ===
+            // Apply position from pipetteStartPos constants
             pipette.position.set(pipetteStartPos.x, pipetteStartPos.y, pipetteStartPos.z);
+            // X: 0 = centered horizontally on bench
+            // Y: pipetteStartPos.y = raised above bench (30cm up for standing position)
+            // Z: pipetteStartPos.z = positioned between balance and weigh boat (20cm from bench back)
+            
             pipette.name = "pipette";
             scene.add(pipette);
             grabbableObjects.push(pipette);
@@ -1890,28 +2043,40 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         window.toggleHelp = toggleHelp;
         window.resetSimulation = function() {
             resetSimulation();
-        };
-
-        function createVRUI() {
+        };        function createVRUI() {
+            // === VR INSTRUCTION PANEL POSITIONING ===
             vrInstructionPanel = createTextPanel(512, 300);
             vrInstructionPanel.position.set(-1.2, 1.2, -1.2);
-            vrInstructionPanel.rotation.y = Math.PI / 8;
+            // X: -1.2 = positioned to the left of user (120cm left)
+            // Y: 1.2 = positioned at eye level (120cm up from floor)
+            // Z: -1.2 = positioned in front and slightly back (120cm from user position)
+            vrInstructionPanel.rotation.y = Math.PI / 8; // Angled slightly toward user (22.5 degrees)
             scene.add(vrInstructionPanel);
+            
+            // === VR RESULTS PANEL POSITIONING ===
             vrResultsPanel = createTextPanel(512, 600);
             vrResultsPanel.position.set(1.2, 1.2, -1.2);
-            vrResultsPanel.rotation.y = -Math.PI / 8;
+            // X: 1.2 = positioned to the right of user (120cm right)
+            // Y: 1.2 = positioned at eye level (120cm up from floor)
+            // Z: -1.2 = positioned in front and slightly back (120cm from user position)
+            vrResultsPanel.rotation.y = -Math.PI / 8; // Angled slightly toward user (-22.5 degrees)
             scene.add(vrResultsPanel);
+              // Note: vrBalanceDisplay is now created in createBalance() function
             
-            // Note: vrBalanceDisplay is now created in createBalance() function
-            
+            // === VR RESET BUTTON POSITIONING ===
             const resetButtonGeom = new THREE.BoxGeometry(0.2, 0.1, 0.02);
             const resetButtonMat = new THREE.MeshStandardMaterial({ color: CBRE_HIGHLIGHT_GREEN });
             resetButton = new THREE.Mesh(resetButtonGeom, resetButtonMat);
             resetButton.name = 'resetButton';
             resetButton.position.set(0, 0.9, -1.5);
+            // X: 0 = centered horizontally with user
+            // Y: 0.9 = positioned slightly below eye level (90cm up from floor)
+            // Z: -1.5 = positioned in front of user (150cm from user position)
+            
+            // === RESET BUTTON TEXT POSITIONING ===
             const resetButtonText = createTextPanel(256, 128);
             updateTextPanel(resetButtonText, ["RESET"]);
-            resetButtonText.position.z = 0.011;
+            resetButtonText.position.z = 0.011; // Positioned just in front of button surface
             resetButton.add(resetButtonText);
             scene.add(resetButton);
         }
