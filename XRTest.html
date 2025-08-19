@@ -513,11 +513,74 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         // GLB Model Display:
         // X: balancePos.x - 0.15 = 15cm left of balance center for easy visibility
         // Y: balancePos.y + 0.12 = 12cm above balance position (clear of transformations)
-        // Z: balancePos.z + 0.25 = 25cm forward from balance center (toward user)
-        // Geometric Model Display:
+        // Z: balancePos.z + 0.25 = 25cm forward from balance center (toward user)        // Geometric Model Display:
         // X: balancePos.x - 0.1 = 10cm left of balance center
         // Y: balancePos.y + 0.15 = 15cm above balance position
         // Z: balancePos.z + 0.15 = 15cm forward from balance center
+
+        // === MAIN ROTATION CONSTANTS ===
+        // Note: X = pitch (forward-/backward+), Y = yaw (left-/right+), Z = roll (ccw-/cw+)
+        
+        // BALANCE ROTATIONS (analytical scale)
+        const balanceRotation = {
+            glb: { 
+                x: 5 * Math.PI / 180,      // 5° toward user (pitch)
+                y: -Math.PI / 2,           // 90° clockwise (yaw)
+                z: 10 * Math.PI / 180      // 10° backward tilt (roll)
+            },
+            geometric: {
+                x: 0,                      // No pitch rotation
+                y: 0,                      // No yaw rotation  
+                z: 0                       // No roll rotation
+            }
+        };
+        // GLB Model Rotations:
+        // X: 5° = slight tilt toward user for better screen visibility
+        // Y: -90° = rotated to face user (negative = clockwise)
+        // Z: 10° = slight backward tilt for realistic positioning
+        // Geometric Model Rotations:
+        // X, Y, Z: 0° = no rotations (aligned with world axes)
+        
+        // BALANCE DISPLAY ROTATIONS (independent positioning)
+        const balanceDisplayRotation = {
+            glb: {
+                x: -Math.PI / 6,           // -30° tilt toward user
+                y: Math.PI / 8,            // 22.5° angle toward balance
+                z: 0                       // No roll
+            },
+            geometric: {
+                x: -Math.PI / 6,           // -30° tilt toward user
+                y: Math.PI / 8,            // 22.5° angle toward balance
+                z: 0                       // No roll
+            }
+        };
+        // Both Model Display Rotations:
+        // X: -30° = tilted toward user for better readability
+        // Y: 22.5° = angled toward balance for natural viewing
+        // Z: 0° = no roll (display stays level)
+        
+        // VR UI PANEL ROTATIONS
+        const vrUIRotation = {
+            instruction: {
+                x: 0,                      // No pitch
+                y: Math.PI / 8,            // 22.5° angled toward user
+                z: 0                       // No roll
+            },
+            results: {
+                x: 0,                      // No pitch
+                y: -Math.PI / 8,           // -22.5° angled toward user
+                z: 0                       // No roll
+            },
+            reset: {
+                x: 0,                      // No pitch
+                y: 0,                      // Facing forward
+                z: 0                       // No roll
+            }
+        };
+        // VR UI Rotations:
+        // Instruction Panel: angled left toward user for easy reading
+        // Results Panel: angled right toward user for easy reading
+        // Reset Button: facing straight forward for centered interaction
 
         // --- SIMULATION STATE VARIABLES ---
         let gameState = 'INIT';
