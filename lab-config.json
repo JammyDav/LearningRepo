@@ -1,0 +1,75 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "description": "WebXR Virtual Pipette Calibration Lab Configuration",
+    "lastModified": "2025-08-28",
+    "units": "meters"
+  },
+  "environment": {
+    "bench": {
+      "position": { "x": 0, "y": 0.4, "z": -0.8 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 },
+      "size": { "width": 2.5, "height": 0.1, "depth": 1.2 }
+    }
+  },
+  "equipment": {
+    "balance": {
+      "position": { "x": -0.5, "y": 0.505, "z": -0.5 },
+      "rotation": { 
+        "x": 0.087, 
+        "y": -1.571, 
+        "z": 0.175 
+      },
+      "scale": { "x": 0.2, "y": 0.2, "z": 0.2 },
+      "model": "glb",
+      "display": {
+        "position": { "x": -0.5, "y": 0.625, "z": -0.25 },
+        "rotation": { "x": -0.524, "y": 0.393, "z": 0 },
+        "scale": { "x": 1, "y": 1, "z": 1 }
+      }
+    },
+    "beaker": {
+      "position": { "x": 0.5, "y": 0.5, "z": -0.5 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    "weighBoat": {
+      "startPosition": { "x": 0, "y": 0.5, "z": -0.3 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    "pipette": {
+      "startPosition": { "x": 0, "y": 0.7, "z": -0.6 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    }
+  },
+  "ui": {
+    "vrInstructionPanel": {
+      "position": { "x": -1.2, "y": 1.2, "z": -1.2 },
+      "rotation": { "x": 0, "y": 0.393, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    "vrResultsPanel": {
+      "position": { "x": 1.2, "y": 1.2, "z": -1.2 },
+      "rotation": { "x": 0, "y": -0.393, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    },
+    "resetButton": {
+      "position": { "x": 0, "y": 0.9, "z": -1.5 },
+      "rotation": { "x": 0, "y": 0, "z": 0 },
+      "scale": { "x": 1, "y": 1, "z": 1 }
+    }
+  },
+  "authoring": {
+    "enabled": false,
+    "selectedObject": null,
+    "manipulationMode": "position",
+    "stepSize": {
+      "position": 0.01,
+      "rotation": 0.087,
+      "scale": 0.05
+    }
+  }
+}
