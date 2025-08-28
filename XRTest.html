@@ -313,6 +313,29 @@
         </div>
     </div>
 
+    <!-- Authoring Mode Info Panel -->
+    <div id="authoring-info" style="display: none; position: fixed; top: 10px; right: 10px; background: rgba(0, 63, 45, 0.95); color: white; padding: 15px; border-radius: 8px; font-family: 'Lato', sans-serif; font-size: 14px; max-width: 300px; z-index: 1000;">
+        <h3 style="margin: 0 0 10px 0; color: #00A86B;">🎨 Authoring Mode Active</h3>
+        <div style="margin-bottom: 10px;">
+            <strong>Desktop Controls:</strong><br>
+            • F1: Toggle Authoring Mode<br>
+            • F2: Save Configuration<br>
+            • Tab: Switch Mode (Pos/Rot/Scale)<br>
+            • Click: Select Object
+        </div>
+        <div style="margin-bottom: 10px;">
+            <strong>VR Controls:</strong><br>
+            • Trigger: Select Object<br>
+            • Grip: Switch Mode<br>
+            • Thumbsticks: Adjust Values<br>
+            • Y Button: Exit Authoring<br>
+            • Menu: Save Config
+        </div>
+        <div id="selected-object-info" style="font-size: 12px; color: #CAD1D3;">
+            No object selected
+        </div>
+    </div>
+
     <!-- Action Buttons -->
     <button class="help-button" onclick="toggleHelp()">Help</button>
     <button class="reset-button" onclick="resetSimulation()">Reset</button>
@@ -544,13 +567,13 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         // BALANCE DISPLAY ROTATIONS (independent positioning)
         const balanceDisplayRotation = {
             glb: {
-                x: -Math.PI / 6,           // -30° tilt toward user
-                y: Math.PI / 8,            // 22.5° angle toward balance
+                x: 0,                       // -30° tilt toward user
+                y: 0,                       // 22.5° angle toward balance
                 z: 0                       // No roll
             },
             geometric: {
-                x: -Math.PI / 6,           // -30° tilt toward user
-                y: Math.PI / 8,            // 22.5° angle toward balance
+                x: 0,                       // -30° tilt toward user
+                y: 0,                       // 22.5° angle toward balance
                 z: 0                       // No roll
             }
         };
@@ -581,6 +604,164 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         // Instruction Panel: angled left toward user for easy reading
         // Results Panel: angled right toward user for easy reading
         // Reset Button: facing straight forward for centered interaction
+
+        // === CONFIGURATION MANAGEMENT SYSTEM ===
+        // Dynamic configuration loading and authoring mode
+        let labConfig = null;
+        let authoringMode = false;
+        let selectedObject = null;
+        let manipulationMode = 'position'; // 'position', 'rotation', 'scale'
+        let authoringUI = null;
+        
+        // Load configuration from external JSON file
+        async function loadLabConfiguration() {
+            try {
+                const response = await fetch('./lab-config.json');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                labConfig = await response.json();
+                console.log('✅ Lab configuration loaded:', labConfig);
+                return labConfig;
+            } catch (error) {
+                console.warn('⚠️ Could not load lab-config.json, using defaults:', error);
+                // Fallback to hardcoded constants if config file fails
+                labConfig = createDefaultConfig();
+                return labConfig;
+            }
+        }
+        
+        // Create default configuration if file loading fails
+        function createDefaultConfig() {
+            return {
+                metadata: { version: "1.0.0", description: "Default Configuration" },
+                environment: {
+                    bench: {
+                        position: { x: 0, y: 0.4, z: -0.8 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    }
+                },
+                equipment: {
+                    balance: {
+                        position: { x: -0.5, y: 0.505, z: -0.5 },
+                        rotation: { x: 0.087, y: -1.571, z: 0.175 },
+                        scale: { x: 0.2, y: 0.2, z: 0.2 },
+                        display: {
+                            position: { x: -0.5, y: 0.625, z: -0.25 },
+                            rotation: { x: -0.524, y: 0.393, z: 0 },
+                            scale: { x: 1, y: 1, z: 1 }
+                        }
+                    },
+                    beaker: {
+                        position: { x: 0.5, y: 0.5, z: -0.5 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    },
+                    weighBoat: {
+                        startPosition: { x: 0, y: 0.5, z: -0.3 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    },
+                    pipette: {
+                        startPosition: { x: 0, y: 0.7, z: -0.6 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    }
+                },
+                ui: {
+                    vrInstructionPanel: {
+                        position: { x: -1.2, y: 1.2, z: -1.2 },
+                        rotation: { x: 0, y: 0.393, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    },
+                    vrResultsPanel: {
+                        position: { x: 1.2, y: 1.2, z: -1.2 },
+                        rotation: { x: 0, y: -0.393, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    },
+                    resetButton: {
+                        position: { x: 0, y: 0.9, z: -1.5 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        scale: { x: 1, y: 1, z: 1 }
+                    }
+                },
+                authoring: {
+                    enabled: false,
+                    selectedObject: null,
+                    manipulationMode: 'position',
+                    stepSize: { position: 0.01, rotation: 0.087, scale: 0.05 }
+                }
+            };
+        }
+        
+        // Save configuration to JSON (downloads file)
+        function saveLabConfiguration() {
+            if (!labConfig) return;
+            
+            const configString = JSON.stringify(labConfig, null, 2);
+            const blob = new Blob([configString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lab-config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            console.log('💾 Configuration saved to downloads');
+        }
+        
+        // Apply configuration to an object
+        function applyConfig(object, config) {
+            if (!object || !config) return;
+            
+            if (config.position) {
+                object.position.set(config.position.x, config.position.y, config.position.z);
+            }
+            if (config.rotation) {
+                object.rotation.set(config.rotation.x, config.rotation.y, config.rotation.z);
+            }
+            if (config.scale) {
+                object.scale.set(config.scale.x, config.scale.y, config.scale.z);
+            }
+        }
+        
+        // Update configuration from an object's current transform
+        function updateConfigFromObject(object, configPath) {
+            if (!labConfig || !object) return;
+            
+            const keys = configPath.split('.');
+            let config = labConfig;
+            
+            // Navigate to the correct config section
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (!config[keys[i]]) config[keys[i]] = {};
+                config = config[keys[i]];
+            }
+            
+            const finalKey = keys[keys.length - 1];
+            if (!config[finalKey]) config[finalKey] = {};
+            
+            // Update the config with current object transform
+            config[finalKey].position = {
+                x: parseFloat(object.position.x.toFixed(3)),
+                y: parseFloat(object.position.y.toFixed(3)),
+                z: parseFloat(object.position.z.toFixed(3))
+            };
+            config[finalKey].rotation = {
+                x: parseFloat(object.rotation.x.toFixed(3)),
+                y: parseFloat(object.rotation.y.toFixed(3)),
+                z: parseFloat(object.rotation.z.toFixed(3))
+            };
+            config[finalKey].scale = {
+                x: parseFloat(object.scale.x.toFixed(3)),
+                y: parseFloat(object.scale.y.toFixed(3)),
+                z: parseFloat(object.scale.z.toFixed(3))
+            };
+        }
 
         // --- SIMULATION STATE VARIABLES ---
         let gameState = 'INIT';
@@ -882,13 +1063,16 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         // --- INITIALIZATION ---
         // The main function that sets up the entire experience.
-        function init() {
+        async function init() {
+            // Load configuration first
+            await loadLabConfiguration();
+            
             // Create the three.js scene, camera, and renderer.
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x2a303c);
             camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 1.6, 1);
-            camera.lookAt(0, benchPos.y, benchPos.z);
+            camera.lookAt(0, labConfig.environment.bench.position.y, labConfig.environment.bench.position.z);
             
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -924,7 +1108,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             // Disable context menu on right click
             renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault(), false);
             
-            // Add escape key handler to release grabbed objects
+            // Add keyboard handlers for authoring mode and object manipulation
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && mouseGrabbedObject) {
                     // Release any grabbed object
@@ -933,6 +1117,22 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                     mouseGrabbedObject = null;
                     isMouseDown = false;
                     orbitControls.enabled = true;
+                } else if (event.key === 'F1') {
+                    // Toggle authoring mode
+                    event.preventDefault();
+                    toggleAuthoringMode();
+                } else if (event.key === 'F2' && authoringMode) {
+                    // Save configuration
+                    event.preventDefault();
+                    saveLabConfiguration();
+                } else if (event.key === 'Tab' && authoringMode && selectedObject) {
+                    // Cycle through manipulation modes
+                    event.preventDefault();
+                    const modes = ['position', 'rotation', 'scale'];
+                    const currentIndex = modes.indexOf(manipulationMode);
+                    manipulationMode = modes[(currentIndex + 1) % modes.length];
+                    updateAuthoringUI();
+                    console.log('🔄 Manipulation mode:', manipulationMode);
                 }
             }, false);
             
@@ -1409,17 +1609,14 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 console.log(`Trying path ${currentPathIndex + 1}/${glbPaths.length}: ${currentPath}`);                loader.load(currentPath, (gltf) => {
                     console.log('Successfully loaded Balance.glb:', gltf);
                     balance = gltf.scene;                    // === BALANCE SCALING AND TRANSFORMATIONS (GLB MODEL) ===
-                    balance.scale.setScalar(0.2); // Double the size (was 0.1, now 0.2)
+                    balance.scale.setScalar(labConfig.equipment.balance.scale.x); // Use config scale
                     
-                    // === BALANCE ROTATIONS ===
-                    // Apply rotations: 90 degrees clockwise on Y-axis, then rotate towards user by 5 degrees
-                    balance.rotation.y = -Math.PI / 2; // 90 degrees clockwise (negative for clockwise)
-                    balance.rotation.z = 10 * Math.PI / 180; // 10 degrees backward tilt (Z-axis rotation)
-                    balance.rotation.x = 5 * Math.PI / 180; // 5 degrees towards user (X-axis rotation)
+                    // === BALANCE ROTATIONS (USING CONFIG) ===
+                    // Apply rotations from configuration
+                    applyConfig(balance, labConfig.equipment.balance);
                     
                     // === BALANCE POSITION ===
-                    // Apply position from balancePos constants
-                    balance.position.set(balancePos.x, balancePos.y - 0.0, balancePos.z);
+                    // Position is applied by applyConfig above
                     // X: -0.5 = left side of bench (50cm left of center)
                     // Y: balancePos.y = raised above bench surface (no additional offset)
                     // Z: balancePos.z = positioned on bench, moved closer to user
@@ -1623,32 +1820,13 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             // This makes positioning easier and independent of balance transformations
             
             if (isGLBModel) {
-                // === GLB MODEL DISPLAY POSITIONING (WORLD COORDINATES) ===
-                // Use predefined constants for easy adjustment
-                displayGroup.position.set(
-                    balanceDisplayPos.glb.x,        // X: 15cm left of balance center
-                    balanceDisplayPos.glb.y,        // Y: 12cm above balance position 
-                    balanceDisplayPos.glb.z         // Z: 25cm forward from balance center
-                );
+                // === GLB MODEL DISPLAY POSITIONING (USING CONFIG) ===
+                applyConfig(displayGroup, labConfig.equipment.balance.display);
                 
-                // === GLB MODEL DISPLAY ROTATIONS ===
-                displayGroup.rotation.x = -Math.PI; // Tilt towards user (0 degrees)
-                displayGroup.rotation.y = Math.PI / 8;  // Slight angle toward balance (22.5 degrees)
-                
-                // === GLB MODEL DISPLAY SCALING ===
-                displayGroup.scale.setScalar(1.0); // Use normal scale for independent positioning
             } else {
-                // === GEOMETRIC MODEL DISPLAY POSITIONING (WORLD COORDINATES) ===
-                // Use predefined constants for easy adjustment
-                displayGroup.position.set(
-                    balanceDisplayPos.geometric.x,  // X: 10cm left of balance center
-                    balanceDisplayPos.geometric.y,  // Y: 15cm above balance position
-                    balanceDisplayPos.geometric.z   // Z: 15cm forward from balance center
-                );
+                // === GEOMETRIC MODEL DISPLAY POSITIONING (USING CONFIG) ===
+                applyConfig(displayGroup, labConfig.equipment.balance.display);
                 
-                // === GEOMETRIC MODEL DISPLAY ROTATIONS ===
-                displayGroup.rotation.x = -Math.PI / 6; // Tilt display towards user (-30 degrees)
-                displayGroup.rotation.y = Math.PI / 8;  // Slight angle toward balance (22.5 degrees)
             }
             
             // Add directly to scene for independent positioning
@@ -2113,7 +2291,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             // X: -1.2 = positioned to the left of user (120cm left)
             // Y: 1.2 = positioned at eye level (120cm up from floor)
             // Z: -1.2 = positioned in front and slightly back (120cm from user position)
-            vrInstructionPanel.rotation.y = Math.PI / 8; // Angled slightly toward user (22.5 degrees)
+            vrInstructionPanel.rotation.x = vrUIRotation.instruction.x; // No pitch
+            vrInstructionPanel.rotation.y = vrUIRotation.instruction.y; // 22.5° angled toward user
+            vrInstructionPanel.rotation.z = vrUIRotation.instruction.z; // No roll
             scene.add(vrInstructionPanel);
             
             // === VR RESULTS PANEL POSITIONING ===
@@ -2122,7 +2302,9 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             // X: 1.2 = positioned to the right of user (120cm right)
             // Y: 1.2 = positioned at eye level (120cm up from floor)
             // Z: -1.2 = positioned in front and slightly back (120cm from user position)
-            vrResultsPanel.rotation.y = -Math.PI / 8; // Angled slightly toward user (-22.5 degrees)
+            vrResultsPanel.rotation.x = vrUIRotation.results.x; // No pitch
+            vrResultsPanel.rotation.y = vrUIRotation.results.y; // -22.5° angled toward user  
+            vrResultsPanel.rotation.z = vrUIRotation.results.z; // No roll
             scene.add(vrResultsPanel);
               // Note: vrBalanceDisplay is now created in createBalance() function
             
@@ -2192,6 +2374,233 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 }
             }
             texture.needsUpdate = true;
+        }
+
+        // === AUTHORING MODE SYSTEM ===
+        
+        // Toggle authoring mode on/off
+        function toggleAuthoringMode() {
+            authoringMode = !authoringMode;
+            console.log('🎨 Authoring mode:', authoringMode ? 'ENABLED' : 'DISABLED');
+            
+            if (authoringMode) {
+                createAuthoringUI();
+                enableObjectSelection();
+            } else {
+                removeAuthoringUI();
+                disableObjectSelection();
+                selectedObject = null;
+            }
+            
+            // Update desktop UI
+            updateDesktopAuthoringUI();
+        }
+        
+        // Create authoring mode UI in VR
+        function createAuthoringUI() {
+            if (authoringUI) return; // Already created
+            
+            authoringUI = new THREE.Group();
+            authoringUI.name = 'authoringUI';
+            
+            // Authoring mode panel
+            const panel = createTextPanel(512, 400);
+            updateTextPanel(panel, [
+                'AUTHORING MODE',
+                'Trigger: Select Object',
+                'Grip: Toggle Mode (Pos/Rot/Scale)', 
+                'Thumbstick: Adjust Values',
+                'Menu: Save Config',
+                'Y Button: Exit Authoring'
+            ]);
+            panel.position.set(0, 1.8, -1);
+            authoringUI.add(panel);
+            
+            // Current selection indicator
+            const selectionIndicator = createTextPanel(256, 128);
+            selectionIndicator.name = 'selectionIndicator';
+            updateTextPanel(selectionIndicator, ['No Object Selected']);
+            selectionIndicator.position.set(0, 1.4, -1);
+            authoringUI.add(selectionIndicator);
+            
+            scene.add(authoringUI);
+        }
+        
+        // Remove authoring UI
+        function removeAuthoringUI() {
+            if (authoringUI) {
+                scene.remove(authoringUI);
+                authoringUI = null;
+            }
+        }
+        
+        // Enable object selection for authoring
+        function enableObjectSelection() {
+            // Add selection indicators to all configurable objects
+            scene.traverse((child) => {
+                if (child.name && isConfigurableObject(child.name)) {
+                    addSelectionIndicator(child);
+                }
+            });
+        }
+        
+        // Disable object selection
+        function disableObjectSelection() {
+            scene.traverse((child) => {
+                if (child.userData.selectionIndicator) {
+                    child.remove(child.userData.selectionIndicator);
+                    delete child.userData.selectionIndicator;
+                }
+            });
+        }
+        
+        // Check if object is configurable
+        function isConfigurableObject(name) {
+            const configurableObjects = [
+                'balance', 'beaker', 'weighBoat', 'pipette', 
+                'balanceDisplay', 'vrInstructionPanel', 'vrResultsPanel', 'resetButton'
+            ];
+            return configurableObjects.includes(name);
+        }
+        
+        // Add selection indicator to object
+        function addSelectionIndicator(object) {
+            const geometry = new THREE.SphereGeometry(0.02, 8, 8);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.7
+            });
+            const indicator = new THREE.Mesh(geometry, material);
+            indicator.name = 'selectionIndicator';
+            
+            // Position indicator at object bounds
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            indicator.position.copy(center);
+            indicator.position.y = box.max.y + 0.05;
+            
+            object.add(indicator);
+            object.userData.selectionIndicator = indicator;
+        }
+        
+        // Handle object selection in authoring mode
+        function handleAuthoringSelection(intersectedObject) {
+            if (!authoringMode || !intersectedObject) return;
+            
+            // Find the root configurable object
+            let targetObject = intersectedObject;
+            while (targetObject.parent && !isConfigurableObject(targetObject.name)) {
+                targetObject = targetObject.parent;
+            }
+            
+            if (isConfigurableObject(targetObject.name)) {
+                selectObject(targetObject);
+            }
+        }
+        
+        // Select an object for editing
+        function selectObject(object) {
+            // Clear previous selection
+            if (selectedObject && selectedObject.userData.selectionIndicator) {
+                selectedObject.userData.selectionIndicator.material.color.setHex(0x00ff00);
+            }
+            
+            selectedObject = object;
+            
+            // Highlight selected object
+            if (selectedObject.userData.selectionIndicator) {
+                selectedObject.userData.selectionIndicator.material.color.setHex(0xff0000);
+            }
+            
+            // Update UI
+            updateAuthoringUI();
+            updateDesktopAuthoringUI();
+            
+            console.log('🎯 Selected object:', selectedObject.name);
+        }
+        
+        // Update authoring UI with current selection info
+        function updateAuthoringUI() {
+            if (!authoringUI || !selectedObject) return;
+            
+            const indicator = authoringUI.getObjectByName('selectionIndicator');
+            if (indicator) {
+                const pos = selectedObject.position;
+                const rot = selectedObject.rotation;
+                const scale = selectedObject.scale;
+                
+                updateTextPanel(indicator, [
+                    `Selected: ${selectedObject.name}`,
+                    `Mode: ${manipulationMode.toUpperCase()}`,
+                    `Pos: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}`,
+                    `Rot: ${rot.x.toFixed(2)}, ${rot.y.toFixed(2)}, ${rot.z.toFixed(2)}`,
+                    `Scale: ${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)}`
+                ]);
+            }
+        }
+        
+        // Handle authoring mode controller input
+        function handleAuthoringInput(controller, gamepad) {
+            if (!authoringMode || !selectedObject || !gamepad) return;
+            
+            const stepSize = labConfig.authoring.stepSize;
+            
+            // Thumbstick controls for precise adjustment
+            const axes = gamepad.axes;
+            if (Math.abs(axes[2]) > 0.3 || Math.abs(axes[3]) > 0.3) { // Right thumbstick
+                const deltaX = axes[2] * stepSize[manipulationMode];
+                const deltaY = -axes[3] * stepSize[manipulationMode]; // Invert Y
+                
+                if (manipulationMode === 'position') {
+                    selectedObject.position.x += deltaX;
+                    selectedObject.position.y += deltaY;
+                } else if (manipulationMode === 'rotation') {
+                    selectedObject.rotation.y += deltaX;
+                    selectedObject.rotation.x += deltaY;
+                } else if (manipulationMode === 'scale') {
+                    const newScaleX = Math.max(0.1, selectedObject.scale.x + deltaX);
+                    const newScaleY = Math.max(0.1, selectedObject.scale.y + deltaY);
+                    selectedObject.scale.x = newScaleX;
+                    selectedObject.scale.y = newScaleY;
+                    selectedObject.scale.z = newScaleX; // Keep uniform scaling
+                }
+                
+                updateAuthoringUI();
+                updateConfigFromObject(selectedObject, getConfigPath(selectedObject.name));
+            }
+            
+            // Left thumbstick for Z-axis adjustment
+            if (Math.abs(axes[0]) > 0.3 || Math.abs(axes[1]) > 0.3) { // Left thumbstick
+                const deltaZ = -axes[1] * stepSize[manipulationMode]; // Invert for natural feel
+                
+                if (manipulationMode === 'position') {
+                    selectedObject.position.z += deltaZ;
+                } else if (manipulationMode === 'rotation') {
+                    selectedObject.rotation.z += deltaZ;
+                } else if (manipulationMode === 'scale') {
+                    const newScale = Math.max(0.1, selectedObject.scale.z + deltaZ);
+                    selectedObject.scale.z = newScale;
+                }
+                
+                updateAuthoringUI();
+                updateConfigFromObject(selectedObject, getConfigPath(selectedObject.name));
+            }
+        }
+        
+        // Get configuration path for an object
+        function getConfigPath(objectName) {
+            const pathMap = {
+                'balance': 'equipment.balance',
+                'beaker': 'equipment.beaker', 
+                'weighBoat': 'equipment.weighBoat',
+                'pipette': 'equipment.pipette',
+                'balanceDisplay': 'equipment.balance.display',
+                'vrInstructionPanel': 'ui.vrInstructionPanel',
+                'vrResultsPanel': 'ui.vrResultsPanel',
+                'resetButton': 'ui.resetButton'
+            };
+            return pathMap[objectName] || objectName;
         }
 
         // --- CONTROLLER & INTERACTION LOGIC ---
@@ -2460,24 +2869,65 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             const tempMatrix = new THREE.Matrix4();
             
             let pointedObject = null;
-            controllers.forEach(controller => {
+            controllers.forEach((controller, index) => {
                  tempMatrix.identity().extractRotation(controller.matrixWorld);
                  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
                  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-                 const intersects = raycaster.intersectObjects([tareButton, resetButton]);
-                 if (intersects.length > 0) {
-                     pointedObject = intersects[0].object;
+                 
+                 // Handle authoring mode differently
+                 if (authoringMode) {
+                     // In authoring mode, raycast against all scene objects
+                     const intersects = raycaster.intersectObjects(scene.children, true);
+                     if (intersects.length > 0) {
+                         pointedObject = intersects[0].object;
+                         handleAuthoringSelection(pointedObject);
+                     }
+                     
+                     // Handle controller input for selected object manipulation
+                     const gamepad = navigator.getGamepads()[index];
+                     if (gamepad) {
+                         handleAuthoringInput(controller, gamepad);
+                         
+                         // Button handling for authoring mode
+                         if (gamepad.buttons[1] && gamepad.buttons[1].pressed) { // Grip button
+                             // Toggle manipulation mode
+                             const modes = ['position', 'rotation', 'scale'];
+                             const currentIndex = modes.indexOf(manipulationMode);
+                             manipulationMode = modes[(currentIndex + 1) % modes.length];
+                             updateAuthoringUI();
+                             console.log('🔄 Manipulation mode:', manipulationMode);
+                         }
+                         
+                         if (gamepad.buttons[3] && gamepad.buttons[3].pressed) { // Y button
+                             // Exit authoring mode
+                             toggleAuthoringMode();
+                         }
+                         
+                         if (gamepad.buttons[6] && gamepad.buttons[6].pressed) { // Menu button
+                             // Save configuration
+                             saveLabConfiguration();
+                         }
+                     }
+                 } else {
+                     // Normal mode - only check UI buttons
+                     const intersects = raycaster.intersectObjects([tareButton, resetButton]);
+                     if (intersects.length > 0) {
+                         pointedObject = intersects[0].object;
+                     }
                  }
             });
 
-            if (controllerPointingAt && controllerPointingAt !== pointedObject) {
-                 if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
-                 if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
-            }
+            // Update highlighting for UI buttons (only in normal mode)
+            if (!authoringMode) {
+                if (controllerPointingAt && controllerPointingAt !== pointedObject) {
+                     if(controllerPointingAt.name === 'tareButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
+                     if(controllerPointingAt.name === 'resetButton') controllerPointingAt.material.color.set(CBRE_HIGHLIGHT_GREEN);
+                }
 
-            controllerPointingAt = pointedObject;
-            if (controllerPointingAt) {
-                controllerPointingAt.material.color.set(CBRE_GREEN);
+                controllerPointingAt = pointedObject;
+                if (controllerPointingAt) {
+                    controllerPointingAt.material.color.set(CBRE_GREEN);
+                }
             }
         }
 
@@ -2582,6 +3032,37 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             alert(`A critical error occurred on initialization: ${e.message}`);
             console.error(e);
         }
+        
+        // Update desktop authoring mode UI
+        function updateDesktopAuthoringUI() {
+            const authoringInfo = document.getElementById('authoring-info');
+            const selectedInfo = document.getElementById('selected-object-info');
+            
+            if (authoringMode) {
+                authoringInfo.style.display = 'block';
+                if (selectedObject) {
+                    const pos = selectedObject.position;
+                    const rot = selectedObject.rotation;
+                    const scale = selectedObject.scale;
+                    selectedInfo.innerHTML = `
+                        <strong>Selected:</strong> ${selectedObject.name}<br>
+                        <strong>Mode:</strong> ${manipulationMode}<br>
+                        <strong>Pos:</strong> ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}<br>
+                        <strong>Rot:</strong> ${rot.x.toFixed(2)}, ${rot.y.toFixed(2)}, ${rot.z.toFixed(2)}<br>
+                        <strong>Scale:</strong> ${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)}
+                    `;
+                } else {
+                    selectedInfo.textContent = 'No object selected - click on an object to select it';
+                }
+            } else {
+                authoringInfo.style.display = 'none';
+            }
+        }
+        
+        // Make functions globally accessible
+        window.toggleAuthoringMode = toggleAuthoringMode;
+        window.saveLabConfiguration = saveLabConfiguration;
+        window.updateDesktopAuthoringUI = updateDesktopAuthoringUI;
 
     </script>
 </body>
