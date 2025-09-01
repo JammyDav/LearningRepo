@@ -2605,29 +2605,327 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         // --- CONTROLLER & INTERACTION LOGIC ---
 
+        // Create a realistic hand model
+        function createHandModel(isLeftHand = false) {
+            const handGroup = new THREE.Group();
+            
+            // Define hand materials with better skin tone
+            const skinMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xfdbcb4,
+                roughness: 0.9,
+                metalness: 0.0,
+                transparent: false
+            });
+            
+            // Add subtle skin texture variation
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fdbcb4';
+            ctx.fillRect(0, 0, 32, 32);
+            
+            // Add some skin texture noise
+            for (let i = 0; i < 50; i++) {
+                ctx.fillStyle = `rgba(${220 + Math.random() * 20}, ${180 + Math.random() * 20}, ${160 + Math.random() * 20}, 0.3)`;
+                ctx.fillRect(Math.random() * 32, Math.random() * 32, 1, 1);
+            }
+            
+            const skinTexture = new THREE.CanvasTexture(canvas);
+            skinMaterial.map = skinTexture;
+            
+            // Palm - slightly more anatomical shape
+            const palmGeometry = new THREE.BoxGeometry(0.08, 0.11, 0.025);
+            // Make palm slightly curved
+            const palm = new THREE.Mesh(palmGeometry, skinMaterial);
+            palm.position.set(0, 0, 0);
+            palm.scale.set(1, 1, 0.8); // Slightly flattened
+            handGroup.add(palm);
+            
+            // Wrist with more realistic proportions
+            const wristGeometry = new THREE.CylinderGeometry(0.032, 0.038, 0.055, 12);
+            const wrist = new THREE.Mesh(wristGeometry, skinMaterial);
+            wrist.position.set(0, -0.085, 0);
+            wrist.rotation.x = Math.PI / 2;
+            handGroup.add(wrist);
+            
+            // Add knuckle details
+            const knuckleGeometry = new THREE.SphereGeometry(0.008, 8, 6);
+            const knucklePositions = [
+                { x: -0.025, y: 0.055, z: 0.015 },
+                { x: -0.005, y: 0.065, z: 0.018 },
+                { x: 0.015, y: 0.06, z: 0.015 },
+                { x: 0.03, y: 0.05, z: 0.01 }
+            ];
+            
+            knucklePositions.forEach(pos => {
+                const knuckle = new THREE.Mesh(knuckleGeometry, skinMaterial);
+                knuckle.position.set(pos.x, pos.y, pos.z);
+                handGroup.add(knuckle);
+            });
+            
+            // Fingers with improved positioning
+            const fingers = [];
+            const fingerPositions = [
+                { x: -0.035, y: 0.055, z: 0.008, name: 'thumb', scale: 0.9 },
+                { x: -0.025, y: 0.08, z: 0.012, name: 'index', scale: 1.0 },
+                { x: -0.005, y: 0.085, z: 0.015, name: 'middle', scale: 1.1 },
+                { x: 0.015, y: 0.08, z: 0.01, name: 'ring', scale: 0.95 },
+                { x: 0.032, y: 0.065, z: 0.005, name: 'pinky', scale: 0.8 }
+            ];
+            
+            fingerPositions.forEach((fingerPos, index) => {
+                const finger = createFinger(fingerPos.name, index === 0, fingerPos.scale, skinMaterial);
+                finger.position.set(fingerPos.x, fingerPos.y, fingerPos.z);
+                
+                // Adjust finger rotations for more natural pose
+                if (fingerPos.name === 'thumb') {
+                    finger.rotation.z = isLeftHand ? -Math.PI / 5 : Math.PI / 5;
+                    finger.rotation.y = isLeftHand ? Math.PI / 6 : -Math.PI / 6;
+                    finger.rotation.x = -Math.PI / 8;
+                } else if (fingerPos.name === 'pinky') {
+                    finger.rotation.z = isLeftHand ? Math.PI / 12 : -Math.PI / 12;
+                }
+                
+                handGroup.add(finger);
+                fingers.push(finger);
+            });
+            
+            // Mirror for left hand
+            if (isLeftHand) {
+                handGroup.scale.x = -1;
+            }
+            
+            // Add slight random variations to make hands feel more organic
+            handGroup.scale.multiplyScalar(0.95 + Math.random() * 0.1);
+            
+            // Store references for animation
+            handGroup.userData = {
+                fingers: fingers,
+                palm: palm,
+                isLeftHand: isLeftHand,
+                skinMaterial: skinMaterial
+            };
+            
+            return handGroup;
+        }
+        
+        // Create individual finger with joints and improved realism
+        function createFinger(fingerName, isThumb = false, scale = 1.0, skinMaterial) {
+            const fingerGroup = new THREE.Group();
+            
+            // Finger dimensions based on type with scaling
+            const dimensions = isThumb ? 
+                { segments: 2, length: 0.022 * scale, width: 0.011 * scale } :
+                { segments: 3, length: 0.018 * scale, width: 0.009 * scale };
+            
+            const joints = [];
+            
+            for (let i = 0; i < dimensions.segments; i++) {
+                const segmentGeometry = new THREE.CylinderGeometry(
+                    dimensions.width * (1 - i * 0.08), 
+                    dimensions.width * (1 - (i + 1) * 0.08), 
+                    dimensions.length, 
+                    8
+                );
+                const segment = new THREE.Mesh(segmentGeometry, skinMaterial);
+                
+                segment.position.y = i * dimensions.length * 0.95; // Slightly overlap segments
+                segment.rotation.x = Math.PI / 2;
+                
+                fingerGroup.add(segment);
+                joints.push(segment);
+            }
+            
+            // Add fingertip with nail
+            const tipGeometry = new THREE.SphereGeometry(dimensions.width * 0.75, 8, 6);
+            const tip = new THREE.Mesh(tipGeometry, skinMaterial);
+            tip.position.y = dimensions.segments * dimensions.length * 0.9;
+            fingerGroup.add(tip);
+            joints.push(tip);
+            
+            // Add fingernail
+            const nailGeometry = new THREE.CylinderGeometry(dimensions.width * 0.6, dimensions.width * 0.6, 0.002, 8);
+            const nailMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5e6d3,
+                roughness: 0.3,
+                metalness: 0.1,
+                transparent: true,
+                opacity: 0.8
+            });
+            const nail = new THREE.Mesh(nailGeometry, nailMaterial);
+            nail.position.y = dimensions.segments * dimensions.length * 0.9;
+            nail.position.z = dimensions.width * 0.6;
+            nail.rotation.x = Math.PI / 2;
+            fingerGroup.add(nail);
+            
+            fingerGroup.userData = {
+                joints: joints,
+                fingerName: fingerName,
+                isThumb: isThumb
+            };
+            
+            return fingerGroup;
+        }
+        
+        // Animate hand based on controller input and context
+        function animateHand(handModel, gamepad, isPointing = false, isGrabbing = false) {
+            if (!handModel || !handModel.userData.fingers) return;
+            
+            // Use context-aware poses
+            if (isGrabbing) {
+                setHandPose(handModel, 'grab');
+            } else if (isPointing) {
+                setHandPose(handModel, 'point');
+            } else if (gamepad) {
+                // Dynamic hand animation based on gamepad input
+                const trigger = gamepad.buttons[0] ? gamepad.buttons[0].value : 0;
+                const grip = gamepad.buttons[1] ? gamepad.buttons[1].value : 0;
+                
+                if (trigger > 0.7) {
+                    setHandPose(handModel, 'pinch');
+                } else if (grip > 0.5) {
+                    setHandPose(handModel, 'fist');
+                } else {
+                    // Interpolate between open and slightly curved based on inputs
+                    const fingers = handModel.userData.fingers;
+                    fingers.forEach(finger => {
+                        const fingerData = finger.userData;
+                        let curlAmount = 0;
+                        
+                        // Natural resting position with slight curl
+                        if (fingerData.fingerName === 'index') {
+                            curlAmount = trigger * 0.7 + 0.1;
+                        } else {
+                            curlAmount = grip * 0.8 + trigger * 0.2 + 0.15;
+                        }
+                        
+                        // Apply curl to finger joints
+                        fingerData.joints.forEach((joint, jointIndex) => {
+                            if (joint.rotation) {
+                                const maxCurl = fingerData.isThumb ? Math.PI / 3 : Math.PI / 2;
+                                joint.rotation.x = Math.PI / 2 - (curlAmount * maxCurl * (jointIndex + 1) / fingerData.joints.length);
+                            }
+                        });
+                    });
+                }
+            } else {
+                // Default relaxed pose
+                setHandPose(handModel, 'open');
+            }
+        }
+
         function initControllers() {
             for (let i = 0; i < 2; i++) {
                 const controller = renderer.xr.getController(i);
                 scene.add(controller);
                 controllers.push(controller);
-                const handMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, emissive: 0x222222 });
-                const palm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.02), handMat);
-                palm.position.z = 0.01;
-                controller.add(palm);
+                
+                // Create realistic hand model instead of simple cube
+                const isLeftHand = (i === 0); // Assuming controller 0 is left hand
+                const handModel = createHandModel(isLeftHand);
+                handModel.position.set(0, 0, 0.02);
+                controller.add(handModel);
+                
+                // Store hand reference for animation
+                controller.userData.handModel = handModel;
+                controller.userData.handIndex = i;
+                
+                // Keep the ray line for interaction feedback
                 const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]);
-                const line = new THREE.Line(lineGeom);
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: 0x00ff00, 
+                    transparent: true, 
+                    opacity: 0.6 
+                });
+                const line = new THREE.Line(lineGeom, lineMaterial);
                 line.scale.z = 5;
+                line.visible = false; // Hide by default, show when pointing
                 controller.add(line);
+                controller.userData.rayLine = line;
+                
+                // Try to initialize hand tracking if available
+                if (renderer.xr.getHand) {
+                    const hand = renderer.xr.getHand(i);
+                    scene.add(hand);
+                    controller.userData.handTracking = hand;
+                    
+                    // Hide controller model when hand tracking is active
+                    hand.addEventListener('connected', () => {
+                        console.log(`✋ Hand tracking connected for controller ${i}`);
+                        handModel.visible = false;
+                    });
+                    
+                    hand.addEventListener('disconnected', () => {
+                        console.log(`🎮 Hand tracking disconnected for controller ${i}, showing controller model`);
+                        handModel.visible = true;
+                    });
+                }
+                
                 controller.addEventListener('selectstart', onSelectStart);
                 controller.addEventListener('selectend', onSelectEnd);
                 controller.addEventListener('squeezestart', onSqueezeStart);
                 controller.addEventListener('squeezeend', onSqueezeEnd);
             }
         }
+        
+        // Enhanced hand poses for different interactions
+        function setHandPose(handModel, poseName) {
+            if (!handModel || !handModel.userData.fingers) return;
+            
+            const fingers = handModel.userData.fingers;
+            const poses = {
+                'open': { // Open hand
+                    thumb: 0, index: 0, middle: 0, ring: 0, pinky: 0
+                },
+                'point': { // Pointing gesture
+                    thumb: 0.3, index: 0, middle: 0.8, ring: 0.8, pinky: 0.8
+                },
+                'grab': { // Grabbing something
+                    thumb: 0.7, index: 0.8, middle: 0.9, ring: 0.9, pinky: 0.8
+                },
+                'pinch': { // Precision pinch
+                    thumb: 0.5, index: 0.5, middle: 0.2, ring: 0.1, pinky: 0.1
+                },
+                'fist': { // Closed fist
+                    thumb: 0.9, index: 0.9, middle: 0.9, ring: 0.9, pinky: 0.9
+                },
+                'peace': { // Peace sign
+                    thumb: 0.3, index: 0, middle: 0, ring: 0.9, pinky: 0.9
+                },
+                'thumbsUp': { // Thumbs up
+                    thumb: 0, index: 0.9, middle: 0.9, ring: 0.9, pinky: 0.9
+                }
+            };
+            
+            const pose = poses[poseName] || poses['open'];
+            
+            fingers.forEach(finger => {
+                const fingerData = finger.userData;
+                const curlAmount = pose[fingerData.fingerName] || 0;
+                
+                fingerData.joints.forEach((joint, jointIndex) => {
+                    if (joint.rotation) {
+                        const maxCurl = fingerData.isThumb ? Math.PI / 3 : Math.PI / 2;
+                        joint.rotation.x = Math.PI / 2 - (curlAmount * maxCurl * (jointIndex + 1) / fingerData.joints.length);
+                    }
+                });
+            });
+        }
 
         // Handles grabbing objects.
         function onSqueezeStart(event) {
             const controller = event.target;
+            
+            // Add haptic feedback when grabbing
+            if (controller.gamepad && controller.gamepad.hapticActuators) {
+                controller.gamepad.hapticActuators[0].pulse(0.5, 100);
+            }
+            
+            // Set grabbing hand pose
+            if (controller.userData.handModel) {
+                setHandPose(controller.userData.handModel, 'grab');
+            }
             if (grabbedObject) return;
             const controllerPos = controller.getWorldPosition(new THREE.Vector3());
             let closestObj = null;
@@ -2653,6 +2951,8 @@ Line: ${event.lineno}, Column: ${event.colno}`;
 
         // Handles releasing objects.
         function onSqueezeEnd(event) {
+            const controller = event.target;
+            
             if (grabbedObject) {
                 const { physicsObject, controller } = grabbedObject;
                 physicsObject.body.type = CANNON.Body.DYNAMIC;
@@ -2662,11 +2962,28 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 physicsObject.body.wakeUp();
                 
                 grabbedObject = null;
+                
+                // Light haptic feedback when releasing
+                if (controller.gamepad && controller.gamepad.hapticActuators) {
+                    controller.gamepad.hapticActuators[0].pulse(0.2, 30);
+                }
+            }
+            
+            // Return hand to relaxed pose when not grabbing
+            if (controller.userData.handModel) {
+                setHandPose(controller.userData.handModel, 'open');
             }
         }
 
         // Handles trigger presses for actions like aspirating, dispensing, and recording.
         function onSelectStart(event) {
+            const controller = event.target;
+            
+            // Add haptic feedback for trigger actions
+            if (controller.gamepad && controller.gamepad.hapticActuators) {
+                controller.gamepad.hapticActuators[0].pulse(0.3, 50);
+            }
+            
             // Case 1: Pointing at a UI button.
             if (controllerPointingAt) {
                 if (controllerPointingAt.name === 'tareButton' && (gameState === 'BOAT_ON_BALANCE' || gameState === 'RECORDING_WEIGHT')) {
@@ -3010,6 +3327,35 @@ Line: ${event.lineno}, Column: ${event.colno}`;
             if (renderer.xr.isPresenting) {
                 handleProximityHighlights();
                 handleControllerRaycasting();
+                
+                // Animate hands based on controller input
+                controllers.forEach((controller, index) => {
+                    if (controller.userData.handModel) {
+                        const gamepad = navigator.getGamepads()[index];
+                        const isPointing = controllerPointingAt !== null;
+                        const isGrabbing = grabbedObject && grabbedObject.controller === controller;
+                        
+                        // Context-aware hand poses
+                        if (isGrabbing && grabbedObject.physicsObject.mesh.name === 'pipette') {
+                            // Special precision grip for pipette
+                            setHandPose(controller.userData.handModel, 'pinch');
+                        } else {
+                            animateHand(controller.userData.handModel, gamepad, isPointing, isGrabbing);
+                        }
+                        
+                        // Show/hide ray line based on pointing
+                        if (controller.userData.rayLine) {
+                            controller.userData.rayLine.visible = isPointing || authoringMode;
+                            
+                            // Change ray color based on context
+                            if (authoringMode) {
+                                controller.userData.rayLine.material.color.setHex(0xff9500); // Orange for authoring
+                            } else if (isPointing) {
+                                controller.userData.rayLine.material.color.setHex(0x00ff00); // Green for normal pointing
+                            }
+                        }
+                    }
+                });
             }
 
             // Update the balance display and render the scene.
