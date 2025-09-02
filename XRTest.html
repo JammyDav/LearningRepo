@@ -468,6 +468,12 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         let raycaster, mouse, mouseGrabbedObject = null;
         let isMouseDown = false;
         let mousePointingAt = null;
+        
+        // Controller button state tracking (to prevent double-pressing)
+        const controllerButtonStates = [
+            { y: false, grip: false, menu: false }, // Controller 0
+            { y: false, grip: false, menu: false }  // Controller 1
+        ];
 
         // --- BRANDING & POSITIONING CONSTANTS ---
         const CBRE_GREEN = '#003F2D';
@@ -2816,6 +2822,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
         }
 
         function initControllers() {
+            console.log('🎮 Initializing VR controllers...');
             for (let i = 0; i < 2; i++) {
                 const controller = renderer.xr.getController(i);
                 scene.add(controller);
@@ -2823,9 +2830,28 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 
                 // Create realistic hand model instead of simple cube
                 const isLeftHand = (i === 0); // Assuming controller 0 is left hand
+                
+                // TEMPORARY: Create simple visible cube for debugging
+                const debugCubeGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                const debugCubeMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xff0000, // Bright red for visibility
+                    transparent: false
+                });
+                const debugCube = new THREE.Mesh(debugCubeGeometry, debugCubeMaterial);
+                debugCube.position.set(0, 0, 0.1); // Move forward from controller
+                controller.add(debugCube);
+                console.log(`🔴 Debug cube added to controller ${i}`);
+                
+                // Also try to create the hand model
                 const handModel = createHandModel(isLeftHand);
-                handModel.position.set(0, 0, 0.02);
+                handModel.position.set(0, 0.15, 0.1); // Position above the debug cube
+                handModel.scale.setScalar(3.0); // Make very large for visibility
                 controller.add(handModel);
+                
+                console.log(`👋 Created hand model ${i} (${isLeftHand ? 'left' : 'right'}):`, handModel);
+                console.log(`Hand children count: ${handModel.children.length}`);
+                console.log(`Hand scale:`, handModel.scale);
+                console.log(`Hand position:`, handModel.position);
                 
                 // Store hand reference for animation
                 controller.userData.handModel = handModel;
@@ -2840,7 +2866,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 });
                 const line = new THREE.Line(lineGeom, lineMaterial);
                 line.scale.z = 5;
-                line.visible = false; // Hide by default, show when pointing
+                line.visible = true; // Make visible for debugging
                 controller.add(line);
                 controller.userData.rayLine = line;
                 
@@ -2867,6 +2893,7 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                 controller.addEventListener('squeezestart', onSqueezeStart);
                 controller.addEventListener('squeezeend', onSqueezeEnd);
             }
+            console.log('✅ VR controllers initialized');
         }
         
         // Enhanced hand poses for different interactions
@@ -3205,25 +3232,35 @@ Line: ${event.lineno}, Column: ${event.colno}`;
                      if (gamepad) {
                          handleAuthoringInput(controller, gamepad);
                          
-                         // Button handling for authoring mode
-                         if (gamepad.buttons[1] && gamepad.buttons[1].pressed) { // Grip button
-                             // Toggle manipulation mode
+                         // Get current button states
+                         const gripPressed = gamepad.buttons[1] && gamepad.buttons[1].pressed;
+                         const yPressed = gamepad.buttons[3] && gamepad.buttons[3].pressed;
+                         const menuPressed = gamepad.buttons[6] && gamepad.buttons[6].pressed;
+                         
+                         // Button handling for authoring mode with state tracking
+                         if (gripPressed && !controllerButtonStates[index].grip) {
+                             // Grip button just pressed - toggle manipulation mode
                              const modes = ['position', 'rotation', 'scale'];
                              const currentIndex = modes.indexOf(manipulationMode);
                              manipulationMode = modes[(currentIndex + 1) % modes.length];
                              updateAuthoringUI();
                              console.log('🔄 Manipulation mode:', manipulationMode);
                          }
+                         controllerButtonStates[index].grip = gripPressed;
                          
-                         if (gamepad.buttons[3] && gamepad.buttons[3].pressed) { // Y button
-                             // Exit authoring mode
+                         if (yPressed && !controllerButtonStates[index].y) {
+                             // Y button just pressed - exit authoring mode
+                             console.log('🚪 Y button pressed - exiting authoring mode');
                              toggleAuthoringMode();
                          }
+                         controllerButtonStates[index].y = yPressed;
                          
-                         if (gamepad.buttons[6] && gamepad.buttons[6].pressed) { // Menu button
-                             // Save configuration
+                         if (menuPressed && !controllerButtonStates[index].menu) {
+                             // Menu button just pressed - save configuration
+                             console.log('💾 Menu button pressed - saving configuration');
                              saveLabConfiguration();
                          }
+                         controllerButtonStates[index].menu = menuPressed;
                      }
                  } else {
                      // Normal mode - only check UI buttons
