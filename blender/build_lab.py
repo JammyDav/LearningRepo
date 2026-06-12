@@ -111,6 +111,8 @@ PALETTE = {
     "h_bin":       ((0.38, 0.42, 0.50, 1.0), 0.55, 0.0),
     "h_ppe":       ((0.95, 0.95, 0.95, 1.0), 0.80, 0.0),
     "hivis":       ((0.95, 0.48, 0.06, 1.0), 0.75, 0.0),
+    "street_navy": ((0.15, 0.19, 0.30, 1.0), 0.75, 0.0),
+    "coat_shadow": ((0.78, 0.78, 0.80, 1.0), 0.80, 0.0),
     "obstruct":    ((0.58, 0.44, 0.30, 1.0), 0.80, 0.0),
 
     # text / labels
@@ -206,7 +208,11 @@ def add_torus(name, cx, cy, cz, major_r, minor_r, material, coll=None):
     return _finish(obj, material, coll, smooth=True)
 
 def add_text(name, body_str, x, y, z, facing="+x", size=0.08, extrude=0.005,
-             material=None, coll=None):
+             material=None, coll=None, wrap_radius=None):
+    """Extruded text-as-mesh. If wrap_radius is set, the glyphs are bent around
+    a vertical cylinder of that radius whose axis sits wrap_radius behind the
+    text origin (i.e. place the object wrap_radius in front of the bottle axis
+    and the text hugs the bottle)."""
     bpy.ops.object.text_add(location=(x, y, z))
     obj = bpy.context.active_object
     obj.name = name
@@ -223,6 +229,15 @@ def add_text(name, body_str, x, y, z, facing="+x", size=0.08, extrude=0.005,
     }[facing]
     obj.rotation_euler = rot
     bpy.ops.object.convert(target="MESH")
+    if wrap_radius is not None:
+        # Pre-rotation local space: x = reading direction, y = up, z = out of face.
+        # Map onto cylinder: tangent point at local origin, axis at local z=-R.
+        R = wrap_radius
+        for v in obj.data.vertices:
+            phi = v.co.x / R
+            radial = R + v.co.z
+            v.co.x = radial * math.sin(phi)
+            v.co.z = radial * math.cos(phi) - R
     return _finish(obj, material, coll)
 
 def add_cable_curve(name, points, radius=0.012, material=None, coll=None):
@@ -826,12 +841,16 @@ def build_hazard_03_unlabelled_bottle(coll):
         add_cylinder(prefix,         cx, cy, base,            radius,      height, body_mat, segments=16, coll=coll)
         add_cylinder(prefix+"_neck", cx, cy, base+height,     radius*0.5,  0.04,   body_mat, segments=12, coll=coll)
         add_cylinder(prefix+"_cap",  cx, cy, base+height+0.04, radius*0.6, 0.025,  mat("label_dark"), segments=12, coll=coll)
-        add_box(prefix+"_label",
-                cx-radius*0.85, cy-radius-0.005, base+0.05,
-                cx+radius*0.85, cy-radius+0.005, base+height-0.02, panel_mat, coll)
+        # Wrap-around band label (full 360° sleeve, slightly proud of the glass)
+        band_r = radius + 0.004
+        add_cylinder(prefix+"_label", cx, cy, base+0.05, band_r, height-0.07,
+                     panel_mat, segments=20, coll=coll)
         if text_str is not None:
-            add_text(prefix+"_text", text_str, cx, cy-radius-0.012, base + (height/2) + 0.02,
-                     facing="-y", size=0.020, extrude=0.002, material=text_col, coll=coll)
+            # Curved text hugging the band on the south face
+            text_r = band_r + 0.002
+            add_text(prefix+"_text", text_str, cx, cy-text_r, base + (height/2) + 0.02,
+                     facing="-y", size=0.020, extrude=0.002, material=text_col, coll=coll,
+                     wrap_radius=text_r)
     make_bottle("HAZARD_03_unlabelled_bottle", 3.40, 3.20, mat("h_bottle"), mat("label_white"))
     make_bottle("ctx_labelled_bottle",  3.70, 3.20, mat("bench_body"), mat("label_white"),
                 text_str="ETHANOL", text_col=mat("label_dark"))
@@ -910,8 +929,9 @@ def build_hazard_06_sharps_in_bin(coll):
     sx3, sy3 = bin_cx-0.02, bin_cy+0.10
     add_cylinder("HAZARD_06_sharps_barrel_3", sx3, sy3, 0.51, 0.013, 0.09, mat("h_ppe"), segments=10, coll=coll)
 
-    # Correct yellow sharps bin
-    sb_x, sb_y = bin_cx, bin_cy + 0.75
+    # Correct yellow sharps bin — beside the general bin against the shared wall
+    # (previously at bin_cy+0.75, which blocked the internal doorway)
+    sb_x, sb_y = bin_cx, bin_cy - 0.42
     add_cylinder("ctx_sharps_bin_correct", sb_x, sb_y, 0.0, 0.18, 0.45, mat("h_bottle"), segments=18, coll=coll)
     add_cylinder("ctx_sharps_bin_correct_lid", sb_x, sb_y, 0.45, 0.18, 0.06, mat("trim"), segments=18, coll=coll)
     add_box("ctx_sharps_bin_correct_label_panel",
@@ -922,35 +942,72 @@ def build_hazard_06_sharps_in_bin(coll):
              material=mat("label_white"), coll=coll)
 
 def build_hazard_07_ppe_failure(coll):
+    """Lab coat (long, white, buttoned, on a hanger) sharing hook with a navy
+    hooded street jacket (short, bulky, zipped, angled sleeves)."""
     cx = PREP[0] + 1.2
-    coat = mat("h_ppe"); street = mat("obstruct"); trim_m = mat("trim")
+    coat = mat("h_ppe"); street = mat("street_navy")
+    trim_m = mat("coat_shadow"); st = mat("stainless")
     yb = PREP[1] + WALL_THICK/2 + 0.06
     yf = PREP[1] + WALL_THICK/2 + 0.16
 
-    add_box("HAZARD_07_lab_coat_yoke",     cx-0.26, yb, 1.36, cx+0.26, yf, 1.50, coat, coll, bevel=0.01)
-    add_box("HAZARD_07_lab_coat_torso",    cx-0.22, yb, 0.95, cx+0.22, yf, 1.36, coat, coll, bevel=0.01)
-    add_box("HAZARD_07_lab_coat_hem",      cx-0.24, yb, 0.62, cx+0.24, yf, 0.95, coat, coll, bevel=0.01)
-    add_box("HAZARD_07_lab_coat_sleeve_l", cx-0.36, yb, 0.95, cx-0.26, yf, 1.42, coat, coll, bevel=0.01)
-    add_box("HAZARD_07_lab_coat_sleeve_r", cx+0.26, yb, 0.95, cx+0.36, yf, 1.42, coat, coll, bevel=0.01)
-    add_box("HAZARD_07_lab_coat_cuff_l",   cx-0.36, yb, 0.92, cx-0.26, yf, 0.96, trim_m, coll)
-    add_box("HAZARD_07_lab_coat_cuff_r",   cx+0.26, yb, 0.92, cx+0.36, yf, 0.96, trim_m, coll)
-    add_box("HAZARD_07_lab_coat_collar",   cx-0.18, yb, 1.50, cx+0.18, yf+0.01, 1.55, trim_m, coll)
-    add_box("HAZARD_07_lab_coat_placket",  cx-0.012, yf-0.001, 0.95, cx+0.012, yf+0.005, 1.40, trim_m, coll)
-    for i, bz in enumerate([1.05, 1.20, 1.32]):
-        add_box(f"HAZARD_07_lab_coat_button_{i}", cx-0.020, yf, bz-0.012, cx+0.020, yf+0.012, bz+0.012, trim_m, coll)
+    # ---- Lab coat (long + white, hangs on a visible hanger) ----
+    # Hanger: hook stem + angled shoulder bars
+    add_cylinder("HAZARD_07_hanger_stem", cx, (yb+yf)/2, 1.56, 0.006, 0.10, st, segments=8, coll=coll)
+    bar_l = add_box("HAZARD_07_hanger_bar_l", cx-0.24, (yb+yf)/2-0.008, 1.49, cx, (yb+yf)/2+0.008, 1.505, st, coll)
+    bar_l.rotation_euler = (0, math.radians(-10), 0)
+    bar_r = add_box("HAZARD_07_hanger_bar_r", cx, (yb+yf)/2-0.008, 1.49, cx+0.24, (yb+yf)/2+0.008, 1.505, st, coll)
+    bar_r.rotation_euler = (0, math.radians(10), 0)
 
-    # Street coat offset +X so the white lab coat stays partially visible (the find-clue)
-    sx = cx + 0.14
-    syb = yf; syf = yf + 0.10
-    add_box("HAZARD_07_street_coat_yoke",     sx-0.28, syb, 1.32, sx+0.28, syf, 1.46, street, coll, bevel=0.01)
-    add_box("HAZARD_07_street_coat_torso",    sx-0.24, syb, 0.85, sx+0.24, syf, 1.32, street, coll, bevel=0.01)
-    add_box("HAZARD_07_street_coat_hem",      sx-0.26, syb, 0.55, sx+0.26, syf, 0.85, street, coll, bevel=0.01)
-    add_box("HAZARD_07_street_coat_sleeve_l", sx-0.38, syb, 0.85, sx-0.28, syf, 1.36, street, coll, bevel=0.01)
-    add_box("HAZARD_07_street_coat_sleeve_r", sx+0.28, syb, 0.85, sx+0.38, syf, 1.36, street, coll, bevel=0.01)
-    add_box("HAZARD_07_street_coat_hood",     sx-0.18, syb, 1.46, sx+0.18, syf+0.04, 1.66, street, coll, bevel=0.01)
-    # Hood opening: thin shadow slit under the hood brim (not a big dark panel)
-    add_box("HAZARD_07_street_coat_hood_opening", sx-0.10, syf-0.001, 1.46, sx+0.10, syf+0.030, 1.50, mat("label_dark"), coll)
-    add_box("HAZARD_07_street_coat_zip", sx-0.01, syf-0.001, 0.85, sx+0.01, syf+0.012, 1.32, mat("stainless"), coll)
+    # Shoulders slope down from the hanger
+    sh_l = add_box("HAZARD_07_lab_coat_shoulder_l", cx-0.25, yb, 1.40, cx-0.02, yf, 1.49, coat, coll, bevel=0.012)
+    sh_l.rotation_euler = (0, math.radians(-8), 0)
+    sh_r = add_box("HAZARD_07_lab_coat_shoulder_r", cx+0.02, yb, 1.40, cx+0.25, yf, 1.49, coat, coll, bevel=0.012)
+    sh_r.rotation_euler = (0, math.radians(8), 0)
+    # Long body, slight A-line flare toward the hem (knee length)
+    add_box("HAZARD_07_lab_coat_torso", cx-0.21, yb, 1.05, cx+0.21, yf, 1.42, coat, coll, bevel=0.012)
+    add_box("HAZARD_07_lab_coat_hem",   cx-0.25, yb+0.005, 0.58, cx+0.25, yf-0.005, 1.05, coat, coll, bevel=0.012)
+    # Sleeves angled slightly outward, full length (lab coats have long sleeves)
+    sl_l = add_box("HAZARD_07_lab_coat_sleeve_l", cx-0.33, yb, 0.92, cx-0.23, yf, 1.40, coat, coll, bevel=0.012)
+    sl_l.rotation_euler = (0, math.radians(-9), 0)
+    sl_r = add_box("HAZARD_07_lab_coat_sleeve_r", cx+0.23, yb, 0.92, cx+0.33, yf, 1.40, coat, coll, bevel=0.012)
+    sl_r.rotation_euler = (0, math.radians(9), 0)
+    # Open collar V: two slim lapel strips tilted in the coat's face plane
+    lap_l = add_box("HAZARD_07_lab_coat_lapel_l", cx-0.085, yf-0.002, 1.28, cx-0.035, yf+0.006, 1.44, trim_m, coll)
+    lap_l.rotation_euler = (0, math.radians(-14), 0)
+    lap_r = add_box("HAZARD_07_lab_coat_lapel_r", cx+0.035, yf-0.002, 1.28, cx+0.085, yf+0.006, 1.44, trim_m, coll)
+    lap_r.rotation_euler = (0, math.radians(14), 0)
+    # Button placket + buttons down the front
+    add_box("HAZARD_07_lab_coat_placket", cx-0.010, yf-0.001, 0.70, cx+0.010, yf+0.004, 1.26, trim_m, coll)
+    for i, bz in enumerate([0.80, 0.95, 1.10, 1.22]):
+        add_cylinder(f"HAZARD_07_lab_coat_button_{i}", cx, yf+0.006, bz, 0.014, 0.008,
+                     mat("label_dark"), segments=10, coll=coll, smooth=False)
+        bpy.data.objects[f"HAZARD_07_lab_coat_button_{i}"].rotation_euler = (math.pi/2, 0, 0)
+    # Chest pocket with pen
+    add_box("HAZARD_07_lab_coat_pocket", cx-0.16, yf-0.001, 1.16, cx-0.06, yf+0.005, 1.26, trim_m, coll)
+    add_box("HAZARD_07_lab_coat_pen", cx-0.13, yf+0.005, 1.20, cx-0.115, yf+0.012, 1.28, mat("poster_blue"), coll)
+
+    # ---- Street jacket (short + bulky + NAVY + hood) on the SAME hook ----
+    sx = cx + 0.16
+    syb = yf + 0.005; syf = yf + 0.13   # bulkier depth than the lab coat
+    # Hood: rounded chunk above the shoulders
+    add_box("HAZARD_07_street_coat_hood", sx-0.17, syb, 1.42, sx+0.17, syf+0.03, 1.62, street, coll, bevel=0.03)
+    add_box("HAZARD_07_street_coat_hood_opening", sx-0.09, syf+0.005, 1.43, sx+0.09, syf+0.034, 1.47, mat("label_dark"), coll)
+    # Shoulders/yoke
+    add_box("HAZARD_07_street_coat_yoke", sx-0.27, syb, 1.30, sx+0.27, syf, 1.43, street, coll, bevel=0.02)
+    # Puffy torso — wider than it is deep, with horizontal quilt bands
+    add_box("HAZARD_07_street_coat_torso", sx-0.25, syb, 0.88, sx+0.25, syf, 1.30, street, coll, bevel=0.02)
+    for i, qz in enumerate([1.00, 1.12, 1.24]):
+        add_box(f"HAZARD_07_street_coat_quilt_{i}", sx-0.25, syf-0.004, qz-0.006, sx+0.25, syf+0.004, qz+0.006,
+                mat("label_dark"), coll)
+    # Elastic hem band (jackets end at the waist — much shorter than the lab coat)
+    add_box("HAZARD_07_street_coat_hem", sx-0.24, syb+0.005, 0.80, sx+0.24, syf-0.005, 0.88, mat("label_dark"), coll, bevel=0.01)
+    # Bulky sleeves angled outward
+    ssl = add_box("HAZARD_07_street_coat_sleeve_l", sx-0.37, syb, 0.84, sx-0.25, syf, 1.34, street, coll, bevel=0.02)
+    ssl.rotation_euler = (0, math.radians(-13), 0)
+    ssr = add_box("HAZARD_07_street_coat_sleeve_r", sx+0.25, syb, 0.84, sx+0.37, syf, 1.34, street, coll, bevel=0.02)
+    ssr.rotation_euler = (0, math.radians(13), 0)
+    # Silver zip down the front
+    add_box("HAZARD_07_street_coat_zip", sx-0.008, syf-0.001, 0.88, sx+0.008, syf+0.008, 1.40, st, coll)
 
     # Hi-vis on separate hook (correct)
     hx = PREP[0] + 2.2

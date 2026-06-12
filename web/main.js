@@ -86,11 +86,12 @@
       why: "Needles in general waste cause needlestick injuries to anyone handling the bag — cleaners, FM staff, waste contractors. Sharps must go into a yellow rigid sharps-only bin and be reported as a near-miss.",
       fix: "Sharps moved to the yellow sharps-only bin and reported as a near-miss.",
       runFix: function (root) {
+        // Sharps bin sits 0.42 m south (Blender -Y) of the general bin → Three.js +Z
         ["HAZARD_06_sharps_barrel_1",
          "HAZARD_06_sharps_needle_1",
          "HAZARD_06_sharps_barrel_2",
          "HAZARD_06_sharps_barrel_3"].forEach(function (n) {
-          moveBy(root, n, "z", -0.75, 800, function () {
+          moveBy(root, n, "z", 0.42, 800, function () {
             var o = root.getObjectByName(n); if (o) o.visible = false;
           });
         });
@@ -100,14 +101,13 @@
       why: "Lab coats can carry trace contamination — pairing them with street wear spreads chemicals or biologicals out of the lab. Lab coats must be hung separately from outdoor clothing.",
       fix: "Street coat moved to a separate hook; lab coat kept isolated.",
       runFix: function (root) {
-        ["HAZARD_07_street_coat_yoke",
-         "HAZARD_07_street_coat_torso",
-         "HAZARD_07_street_coat_hem",
-         "HAZARD_07_street_coat_sleeve_l",
-         "HAZARD_07_street_coat_sleeve_r",
-         "HAZARD_07_street_coat_hood",
-         "HAZARD_07_street_coat_hood_opening",
-         "HAZARD_07_street_coat_zip"].forEach(function (n) { moveBy(root, n, "x", 1.5, 1000); });
+        // Move every street-coat part (incl. quilt bands) to the free hook at
+        // Blender x=8.7 (jacket hangs at 9.36; +x toward the lockers is occupied)
+        var names = [];
+        root.traverse(function (o) {
+          if (o.isMesh && o.name.indexOf("HAZARD_07_street_coat_") === 0) names.push(o.name);
+        });
+        names.forEach(function (n) { moveBy(root, n, "x", -0.66, 1000); });
       } }
   ];
   HAZARDS.forEach(function (h) { h.found = false; h.fixed = false; });
