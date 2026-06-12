@@ -144,11 +144,48 @@
     scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
   }
 
-  if (typeof VRButton !== "undefined") {
-    var vrBtn = VRButton.createButton(renderer);
-    vrBtn.style.zIndex = "13";
-    document.body.appendChild(vrBtn);
-  }
+  if (renderer.xr.setFoveation) renderer.xr.setFoveation(1); // Quest perf
+
+  // VR entry button — hand-rolled (three r147 ships no UMD VRButton).
+  // Only appears on devices that actually support immersive-vr (e.g. Quest).
+  (function setupVRButton() {
+    if (!("xr" in navigator)) return;
+    navigator.xr.isSessionSupported("immersive-vr").then(function (supported) {
+      if (!supported) return;
+      var btn = document.createElement("button");
+      btn.id = "vr-button";
+      btn.textContent = "ENTER VR";
+      var s = btn.style;
+      s.position = "fixed"; s.bottom = "28px"; s.left = "50%";
+      s.transform = "translateX(-50%)"; s.zIndex = "20";
+      s.padding = "16px 32px"; s.fontSize = "16px"; s.fontWeight = "700";
+      s.border = "0"; s.borderRadius = "8px"; s.cursor = "pointer";
+      s.background = "#9bd6a4"; s.color = "#0b0c0f";
+      s.boxShadow = "0 4px 16px rgba(0,0,0,.4)";
+      var currentSession = null;
+      btn.addEventListener("click", function () {
+        if (currentSession) { currentSession.end(); return; }
+        navigator.xr.requestSession("immersive-vr", {
+          optionalFeatures: ["local-floor", "bounded-floor"]
+        }).then(function (session) {
+          currentSession = session;
+          renderer.xr.setSession(session);
+          btn.textContent = "EXIT VR";
+          // Dismiss the start overlay without grabbing pointer lock
+          overlay.style.display = "none";
+          if (!startTime) startTime = performance.now();
+          session.addEventListener("end", function () {
+            currentSession = null;
+            btn.textContent = "ENTER VR";
+          });
+        }).catch(function (e) {
+          console.error("[vr] failed to start session", e);
+          btn.textContent = "VR FAILED — RETRY";
+        });
+      });
+      document.body.appendChild(btn);
+    });
+  })();
 
   window.addEventListener("resize", function () {
     camera.aspect = window.innerWidth / window.innerHeight;
