@@ -1,0 +1,10 @@
+# Local Claude Code session config
+.claude/
+
+# OS noise
+Thumbs.db
+desktop.ini
+
+# Blender backups
+*.blend1
+*.blend2

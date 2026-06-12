@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CBRE Lab Safety Induction — find-then-fix</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0c0f; color: #e8e8ea;
+               font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden;
+               -webkit-user-select: none; user-select: none; }
+  #app { position: fixed; inset: 0; }
+
+  /* HUD bottom-left */
+  #hud { position: fixed; left: 12px; bottom: 12px; padding: 10px 12px;
+         background: rgba(0,0,0,.55); border-radius: 6px; pointer-events: none; z-index: 4; }
+  #hud b { color: #9bd6a4; }
+  .key { display: inline-block; padding: 1px 6px; background: #2a2d33; border-radius: 3px;
+         font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
+
+  /* Crosshair */
+  #crosshair { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+               pointer-events: none; z-index: 3; opacity: .9; transition: opacity .15s; }
+  #crosshair .dot { width: 4px; height: 4px; border-radius: 50%; background: #fff;
+                    box-shadow: 0 0 4px rgba(0,0,0,.5); margin: 0 auto; }
+  #crosshair .ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+                     width: 22px; height: 22px; border: 2px solid rgba(255,255,255,.8); border-radius: 50%;
+                     opacity: 0; transition: opacity .15s, transform .15s; }
+  #crosshair.targeting .ring { opacity: 1; transform: translate(-50%,-50%) scale(1.0); border-color: #9bd6a4; }
+  #crosshair.wrong .ring { opacity: 1; border-color: #ef6b6b; transform: translate(-50%,-50%) scale(1.4); }
+
+  #target-tip { position: fixed; left: 50%; top: calc(50% + 28px); transform: translateX(-50%);
+                background: rgba(0,0,0,.65); padding: 4px 10px; border-radius: 4px; font-size: 12px;
+                color: #d2f0d6; pointer-events: none; z-index: 3; opacity: 0; transition: opacity .15s; }
+  #target-tip.show { opacity: 1; }
+
+  /* Hazard list panel */
+  #haz-panel { position: fixed; right: 12px; top: 12px; width: 250px; padding: 10px 12px;
+               background: rgba(20,22,26,.85); border: 1px solid #2a2d33; border-radius: 6px;
+               z-index: 4; }
+  #haz-panel h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; color: #9bd6a4;
+                  text-transform: uppercase; font-weight: 600; }
+  #haz-list { list-style: none; padding: 0; margin: 0; }
+  #haz-list li { padding: 4px 0; font-size: 12.5px; color: #b0b3b8; display: flex; align-items: center; gap: 8px;
+                 transition: color .2s; }
+  #haz-list li.found { color: #d8eed9; }
+  #haz-list li.fixed { color: #fff; }
+  #haz-list li.missed { color: #ef6b6b; }
+  #haz-list .box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #4a4e55;
+                    border-radius: 3px; flex-shrink: 0; text-align: center; line-height: 11px; font-size: 11px; }
+  #haz-list .found .box { border-color: #9bd6a4; color: #9bd6a4; }
+  #haz-list .fixed .box { background: #9bd6a4; color: #0b0c0f; border-color: #9bd6a4; }
+  #haz-list .missed .box { border-color: #ef6b6b; color: #ef6b6b; }
+  #haz-progress { margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2d33;
+                  font-size: 11px; color: #7a7e85; }
+  #haz-progress b { color: #fff; }
+
+  /* Modal (hazard explanation + completion) */
+  .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+           background: rgba(8,9,11,.78); z-index: 12; }
+  .modal.show { display: flex; }
+  .modal .card { max-width: 520px; padding: 26px 28px; background: #15171b;
+                 border: 1px solid #2a2d33; border-radius: 10px; }
+  .modal h2 { margin: 0 0 6px; font-size: 17px; color: #fff; }
+  .modal .why-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+                      color: #9bd6a4; margin-top: 12px; margin-bottom: 4px; }
+  .modal p { color: #c0c3c8; margin: 4px 0; }
+  .modal .actions { margin-top: 20px; display: flex; gap: 10px; }
+  .modal button { padding: 9px 16px; border: 0; border-radius: 6px; font-weight: 600;
+                  cursor: pointer; font-size: 13px; }
+  .btn-primary { background: #9bd6a4; color: #0b0c0f; }
+  .btn-primary:hover { background: #b6e3bd; }
+  .btn-secondary { background: #2a2d33; color: #e8e8ea; }
+  .btn-secondary:hover { background: #3a3e46; }
+
+  /* Initial overlay */
+  #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+             background: rgba(8,9,11,.85); z-index: 14; }
+  #overlay .card { max-width: 480px; padding: 28px 32px; background: #15171b;
+                   border: 1px solid #2a2d33; border-radius: 10px; }
+  #overlay h1 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+  #overlay p { color: #b9bcc2; margin: 8px 0; }
+  #overlay button { margin-top: 16px; padding: 10px 18px; background: #9bd6a4; color: #0b0c0f;
+                    border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  #overlay button:hover { background: #b6e3bd; }
+  #status { margin-top: 14px; color: #7a7e85; font-size: 12px; }
+
+  /* Completion stats */
+  .stat-row { display: flex; justify-content: space-between; padding: 6px 0;
+              border-bottom: 1px solid #232529; font-size: 13px; color: #c0c3c8; }
+  .stat-row:last-child { border-bottom: 0; }
+  .stat-row b { color: #fff; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    Move <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+    &nbsp; Sprint <span class="key">Shift</span>
+    &nbsp; Look <span class="key">drag mouse</span>
+    &nbsp; Flag <span class="key">click</span>
+    &nbsp; Help <span class="key">H</span>
+    &nbsp;|&nbsp; <b id="hud-room">—</b>
+  </div>
+
+  <div id="crosshair"><div class="ring"></div><div class="dot"></div></div>
+  <div id="target-tip">Click to flag hazard</div>
+
+  <aside id="haz-panel">
+    <h3>Hazards</h3>
+    <ul id="haz-list"><!-- populated by main.js --></ul>
+    <div id="haz-progress"><b id="hp-fixed">0</b> fixed · <span id="hp-found">0</span> flagged · <span id="hp-wrong">0</span> wrong</div>
+    <button id="haz-submit" class="btn-secondary" style="margin-top:8px;width:100%;padding:7px 10px;border:0;border-radius:5px;cursor:pointer;font-size:12px;background:#2a2d33;color:#e8e8ea;">I'm done — submit</button>
+  </aside>
+
+  <!-- Hazard explanation modal -->
+  <div id="hz-modal" class="modal">
+    <div class="card">
+      <h2 id="hzm-title">—</h2>
+      <p id="hzm-subtitle" style="color:#9bd6a4;font-size:12px;margin:0 0 8px;">Hazard found</p>
+      <div class="why-label">Why this is dangerous</div>
+      <p id="hzm-why">—</p>
+      <div class="why-label">How to make safe</div>
+      <p id="hzm-fix">—</p>
+      <div class="actions">
+        <button id="hzm-fix-btn" class="btn-primary">Make safe</button>
+        <button id="hzm-close-btn" class="btn-secondary">Later</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion screen -->
+  <div id="done-modal" class="modal">
+    <div class="card">
+      <h2>Induction complete</h2>
+      <p style="color:#9bd6a4;font-size:12px;margin:0 0 12px;">Walk-through finished</p>
+      <div id="done-stats"></div>
+      <p id="done-note" style="margin-top:14px;color:#b0b3b8;font-size:12.5px;"></p>
+      <div class="actions">
+        <button id="done-review-btn" class="btn-primary">Review missed hazards in scene</button>
+        <button id="done-restart-btn" class="btn-secondary">Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay">
+    <div class="card">
+      <h1>CBRE Lab Safety Induction</h1>
+      <p>Walk through the lab and prep room. Spot the seven safety hazards and click each one to learn why it's dangerous and make it safe.</p>
+      <p style="color:#7a7e85;font-size:12px;">Look: drag mouse · Move: WASD · Sprint: Shift · Flag a hazard: click on it</p>
+      <button id="start-btn">Start</button>
+      <p id="status">Loading 3D engine…</p>
+    </div>
+  </div>
+
+  <!-- Inline safety: dismiss overlay on click even if Three.js fails to load -->
+  <script>
+    (function () {
+      var btn = document.getElementById('start-btn');
+      var ov = document.getElementById('overlay');
+      btn.addEventListener('click', function () { ov.style.display = 'none'; });
+    })();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/webxr/VRButton.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
