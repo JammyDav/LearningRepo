@@ -476,22 +476,32 @@
     return null;
   }
 
+  var currentSubmitHover = false;
   function updateTargeting() {
     if (!labRoot || modalOpen()) {
-      if (currentTarget) { currentTarget = null; crosshairEl.classList.remove("targeting"); tipEl.classList.remove("show"); }
+      if (currentTarget || currentSubmitHover) {
+        currentTarget = null; currentSubmitHover = false;
+        crosshairEl.classList.remove("targeting"); tipEl.classList.remove("show");
+      }
       return;
     }
     pcRaycaster.setFromCamera(screenCenter, camera);
-    var hits = pcRaycaster.intersectObjects(labRoot.children, true);
+    var hits = pcRaycaster.intersectObjects(interactables(), true);
     var hazard = (hits.length > 0) ? findHazardForObject(hits[0].object) : null;
+    var submitHover = (hits.length > 0) && !hazard && findSubmitForObject(hits[0].object);
     var fixedState = hazard ? hazard.fixed : null;
-    if (hazard !== currentTarget || fixedState !== currentTargetFixed) {
+    if (hazard !== currentTarget || fixedState !== currentTargetFixed || submitHover !== currentSubmitHover) {
       currentTarget = hazard;
       currentTargetFixed = fixedState;
+      currentSubmitHover = submitHover;
       if (hazard && !hazard.fixed) {
         crosshairEl.classList.add("targeting");
         tipEl.classList.add("show");
         tipEl.textContent = hazard.found ? "Click to revisit" : "Click to flag hazard";
+      } else if (submitHover && !completed) {
+        crosshairEl.classList.add("targeting");
+        tipEl.classList.add("show");
+        tipEl.textContent = "Click to submit";
       } else {
         crosshairEl.classList.remove("targeting");
         tipEl.classList.remove("show");
@@ -507,6 +517,7 @@
   function handleClick() {
     if (overlay.style.display !== "none") return;
     if (currentTarget) openHazardModal(currentTarget);
+    else if (currentSubmitHover) { if (!completed) onComplete(); }
     else {
       crosshairEl.classList.add("wrong");
       setTimeout(function () { crosshairEl.classList.remove("wrong"); }, 250);
@@ -571,7 +582,6 @@
   // -------------------------------------------------------------------------
   var vrRaycaster = new THREE.Raycaster();
   vrRaycaster.far = TELEPORT_MAX_DIST;
-  var floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   var tempMatrix = new THREE.Matrix4();
   var tempVec = new THREE.Vector3();
 
@@ -610,31 +620,40 @@
     if (tip && tipDistance != null) tip.position.z = -Math.max(0.1, Math.min(tipDistance, RAYCAST_MAX_DIST));
   }
 
+  function findSubmitForObject(obj) {
+    while (obj) {
+      if (obj.userData && obj.userData.submit) return true;
+      obj = obj.parent;
+    }
+    return false;
+  }
+
+  function interactables() {
+    var list = [];
+    if (labRoot) list.push(labRoot);
+    if (boardGroup) list.push(boardGroup);
+    return list;
+  }
+
   function castFromController(ctl) {
     tempMatrix.identity().extractRotation(ctl.matrixWorld);
     vrRaycaster.ray.origin.setFromMatrixPosition(ctl.matrixWorld);
     vrRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-
-    // Hazards/scene first (limited by RAYCAST_MAX_DIST)
-    vrRaycaster.far = RAYCAST_MAX_DIST;
-    if (labRoot) {
-      var hits = vrRaycaster.intersectObjects(labRoot.children, true);
-      if (hits.length > 0) {
-        var hazard = findHazardForObject(hits[0].object);
-        return { hazard: hazard, sceneHit: hits[0], distance: hits[0].distance };
-      }
-    }
-    // Then floor plane (longer range for teleport)
     vrRaycaster.far = TELEPORT_MAX_DIST;
-    var floorHit = new THREE.Vector3();
-    if (vrRaycaster.ray.intersectPlane(floorPlane, floorHit)) {
-      var distance = vrRaycaster.ray.origin.distanceTo(floorHit);
-      if (distance <= TELEPORT_MAX_DIST) {
-        var inside = inAnyRoom(floorHit.x, -floorHit.z);
-        return { floorPoint: inside ? floorHit : null, floorPointRaw: floorHit, distance: distance };
-      }
+
+    var hits = vrRaycaster.intersectObjects(interactables(), true);
+    if (hits.length === 0) return { distance: RAYCAST_MAX_DIST };
+
+    var h0 = hits[0];
+    var hazard = findHazardForObject(h0.object);
+    if (hazard) return { hazard: hazard, distance: h0.distance };
+    if (findSubmitForObject(h0.object)) return { submit: true, distance: h0.distance };
+    // Floor tiles are meshes — a hit on one is a teleport request
+    if (h0.object.name.indexOf("floor_") === 0) {
+      var inside = inAnyRoom(h0.point.x, -h0.point.z);
+      return { floorPoint: inside ? h0.point.clone() : null, distance: h0.distance };
     }
-    return { distance: RAYCAST_MAX_DIST };
+    return { distance: h0.distance };
   }
 
   function updateVRTargeting() {
@@ -642,7 +661,7 @@
       var ctl = controllers[i];
       var hit = castFromController(ctl);
       ctl.userData.lastHit = hit;
-      if (hit.hazard && !hit.hazard.fixed) {
+      if ((hit.hazard && !hit.hazard.fixed) || hit.submit) {
         setLaserAppearance(ctl, COLOR_LASER_HAZARD, hit.distance);
       } else if (hit.floorPoint) {
         setLaserAppearance(ctl, COLOR_LASER_FLOOR, hit.distance);
@@ -652,41 +671,233 @@
     }
   }
 
-  function flagAndFixVR(h) {
-    if (!h.found) { h.found = true; foundCount++; }
-    if (!h.fixed && labRoot) {
-      h.fixed = true; fixedCount++;
-      try { h.runFix(labRoot); } catch (e) { console.error(e); }
-      if (fixedCount === HAZARDS.length && !completed) onComplete();
-    }
+  function flashPrefix(root, prefix, hex, ms) {
+    if (!root) return;
+    root.traverse(function (o) {
+      if (o.isMesh && o.name.indexOf(prefix) === 0 && o.material && o.material.emissive) {
+        ensureUniqueMaterial(o);
+        var orig = o.material.emissive.getHex();
+        var origI = o.material.emissiveIntensity || 0;
+        o.material.emissive.setHex(hex);
+        o.material.emissiveIntensity = 0.5;
+        (function (mesh, oh, oi) {
+          setTimeout(function () {
+            if (mesh.material && mesh.material.emissive) {
+              mesh.material.emissive.setHex(oh);
+              mesh.material.emissiveIntensity = oi;
+            }
+          }, ms);
+        })(o, orig, origI);
+      }
+    });
+  }
+
+  function fixHazard(h) {
+    if (h.fixed || !labRoot) return;
+    h.fixed = true;
+    fixedCount++;
+    try { h.runFix(labRoot); } catch (e) { console.error(e); }
+    flashPrefix(labRoot, h.prefix, 0x2fa84f, 1200);
     updateProgressUI();
     renderHazardList();
+    if (fixedCount === HAZARDS.length && !completed) onComplete();
   }
 
   function teleportTo(point) {
-    // Account for current head offset within the rig so the user lands where they aimed
-    var head = renderer.xr.getCamera();
-    var headLocal = head.position.clone();
-    rig.position.x = point.x - headLocal.x;
-    rig.position.z = point.z - headLocal.z;
+    // World-space delta keeps this correct regardless of rig rotation (snap turns)
+    camera.getWorldPosition(tempVec);
+    rig.position.x += point.x - tempVec.x;
+    rig.position.z += point.z - tempVec.z;
+  }
+
+  // ---- In-VR explanation card --------------------------------------------
+  var vrCard = null, vrCardCtx = null, vrCardTex = null, activeVRHazard = null;
+
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
+    var words = text.split(" ");
+    var line = "", lines = 0;
+    for (var i = 0; i < words.length; i++) {
+      var test = line ? line + " " + words[i] : words[i];
+      if (ctx.measureText(test).width > maxWidth && line) {
+        ctx.fillText(line, x, y);
+        y += lineHeight;
+        lines++;
+        if (maxLines && lines >= maxLines - 1) {
+          // last allowed line gets the remainder, ellipsised
+          var rest = words.slice(i).join(" ");
+          while (ctx.measureText(rest + "…").width > maxWidth && rest.length > 4) {
+            rest = rest.slice(0, -2);
+          }
+          ctx.fillText(rest + (i < words.length ? "" : ""), x, y);
+          return y + lineHeight;
+        }
+        line = words[i];
+      } else {
+        line = test;
+      }
+    }
+    if (line) { ctx.fillText(line, x, y); y += lineHeight; }
+    return y;
+  }
+
+  function buildVRCard() {
+    var canvas = document.createElement("canvas");
+    canvas.width = 1024; canvas.height = 640;
+    vrCardCtx = canvas.getContext("2d");
+    vrCardTex = new THREE.CanvasTexture(canvas);
+    var matCard = new THREE.MeshBasicMaterial({ map: vrCardTex, transparent: true });
+    vrCard = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.72), matCard);
+    vrCard.visible = false;
+    vrCard.renderOrder = 100;
+    scene.add(vrCard);
+  }
+
+  function drawVRCard(h) {
+    var ctx = vrCardCtx;
+    ctx.clearRect(0, 0, 1024, 640);
+    // panel
+    ctx.fillStyle = "rgba(18,20,24,0.96)";
+    ctx.strokeStyle = "#3a3e46";
+    ctx.lineWidth = 3;
+    roundRect(ctx, 4, 4, 1016, 632, 24);
+    ctx.fill(); ctx.stroke();
+    // subtitle
+    ctx.fillStyle = "#9bd6a4";
+    ctx.font = "600 30px system-ui, sans-serif";
+    ctx.fillText(h.fixed ? "ALREADY MADE SAFE" : "HAZARD FOUND", 48, 70);
+    // title
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 46px system-ui, sans-serif";
+    var y = wrapText(ctx, h.title, 48, 130, 928, 56, 2);
+    // why
+    ctx.fillStyle = "#9bd6a4";
+    ctx.font = "600 26px system-ui, sans-serif";
+    ctx.fillText("WHY THIS IS DANGEROUS", 48, y + 30);
+    ctx.fillStyle = "#d6d9dd";
+    ctx.font = "30px system-ui, sans-serif";
+    y = wrapText(ctx, h.why, 48, y + 74, 928, 40, 6);
+    // fix
+    ctx.fillStyle = "#9bd6a4";
+    ctx.font = "600 26px system-ui, sans-serif";
+    ctx.fillText("HOW TO MAKE SAFE", 48, y + 26);
+    ctx.fillStyle = "#d6d9dd";
+    ctx.font = "30px system-ui, sans-serif";
+    y = wrapText(ctx, h.fix, 48, y + 70, 928, 40, 3);
+    // footer
+    ctx.fillStyle = "#0b0c0f";
+    ctx.fillStyle = "#9bd6a4";
+    ctx.font = "700 32px system-ui, sans-serif";
+    ctx.fillText(h.fixed ? "TRIGGER — close" : "TRIGGER — make safe        GRIP — later", 48, 596);
+    vrCardTex.needsUpdate = true;
+  }
+
+  function roundRect(ctx, x, y, w, hgt, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + hgt, r);
+    ctx.arcTo(x + w, y + hgt, x, y + hgt, r);
+    ctx.arcTo(x, y + hgt, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function showVRCard(h) {
+    if (!vrCard) buildVRCard();
+    activeVRHazard = h;
+    drawVRCard(h);
+    // place 1.4 m in front of the head, facing the user
+    var eye = new THREE.Vector3();
+    camera.getWorldPosition(eye);
+    var dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    dir.y = 0; dir.normalize();
+    vrCard.position.set(eye.x + dir.x * 1.4, Math.max(1.0, eye.y - 0.1), eye.z + dir.z * 1.4);
+    vrCard.lookAt(eye.x, vrCard.position.y, eye.z);
+    vrCard.visible = true;
+  }
+
+  function closeVRCard(applyFix) {
+    if (vrCard) vrCard.visible = false;
+    var h = activeVRHazard;
+    activeVRHazard = null;
+    if (applyFix && h && !h.fixed && !completed) fixHazard(h);
   }
 
   function onControllerSelectStart(ctl) {
     if (overlay.style.display !== "none") { dismissOverlay(); return; }
+    // An open card captures the trigger: confirm = make safe
+    if (vrCard && vrCard.visible) { closeVRCard(true); return; }
+
     var hit = ctl.userData.lastHit || castFromController(ctl);
-    if (hit.hazard && !hit.hazard.fixed) {
-      flagAndFixVR(hit.hazard);
+    if (hit.hazard && !hit.hazard.fixed && !completed) {
+      if (!hit.hazard.found) {
+        hit.hazard.found = true;
+        foundCount++;
+        updateProgressUI();
+        renderHazardList();
+      }
+      showVRCard(hit.hazard);
+    } else if (hit.hazard) {
+      showVRCard(hit.hazard);   // fixed or post-completion review — info only
+    } else if (hit.submit) {
+      if (!completed) onComplete();
     } else if (hit.floorPoint) {
       teleportTo(hit.floorPoint);
-    } else if (hit.hazard && hit.hazard.fixed) {
-      // already fixed — flash to confirm but no-op
     } else {
       wrongClicks++;
       updateProgressUI();
     }
   }
+  function onControllerSqueezeStart() {
+    if (vrCard && vrCard.visible) closeVRCard(false); // "Later"
+  }
   controllers[0].addEventListener("selectstart", function () { onControllerSelectStart(controllers[0]); });
   controllers[1].addEventListener("selectstart", function () { onControllerSelectStart(controllers[1]); });
+  controllers[0].addEventListener("squeezestart", onControllerSqueezeStart);
+  controllers[1].addEventListener("squeezestart", onControllerSqueezeStart);
+
+  // ---- Thumbstick locomotion: left = smooth move, right = 45° snap turn ----
+  var snapReady = true;
+  function updateThumbsticks(dt) {
+    var session = renderer.xr.getSession();
+    if (!session) return;
+    var sources = session.inputSources;
+    for (var i = 0; i < sources.length; i++) {
+      var src = sources[i];
+      if (!src.gamepad || !src.gamepad.axes || src.gamepad.axes.length < 4) continue;
+      var ax = src.gamepad.axes[2], ay = src.gamepad.axes[3];
+      if (src.handedness === "left") {
+        if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) continue;
+        camera.getWorldDirection(tmpForward);
+        tmpForward.y = 0; tmpForward.normalize();
+        tmpRight.crossVectors(tmpForward, camera.up).normalize();
+        var speed = 2.0;
+        var dx = (tmpForward.x * -ay + tmpRight.x * ax) * speed * dt;
+        var dz = (tmpForward.z * -ay + tmpRight.z * ax) * speed * dt;
+        // Collision constrains the HEAD position, not the rig origin
+        camera.getWorldPosition(tempVec);
+        var clamped = clampToRooms(tempVec.x, tempVec.z, tempVec.x + dx, tempVec.z + dz);
+        rig.position.x += clamped[0] - tempVec.x;
+        rig.position.z += clamped[1] - tempVec.z;
+      } else if (src.handedness === "right") {
+        if (Math.abs(ax) < 0.3) { snapReady = true; continue; }
+        if (snapReady && Math.abs(ax) > 0.6) {
+          snapReady = false;
+          snapTurn(ax > 0 ? -Math.PI / 4 : Math.PI / 4);
+        }
+      }
+    }
+  }
+  function snapTurn(theta) {
+    // Rotate the rig about the user's head so they pivot in place
+    camera.getWorldPosition(tempVec);
+    var px = rig.position.x - tempVec.x;
+    var pz = rig.position.z - tempVec.z;
+    var c = Math.cos(theta), s = Math.sin(theta);
+    rig.position.x = tempVec.x + px * c + pz * s;
+    rig.position.z = tempVec.z - px * s + pz * c;
+    rig.rotation.y += theta;
+  }
 
   // Show/hide PC HUD when entering/leaving VR
   renderer.xr.addEventListener("sessionstart", function () {
@@ -700,10 +911,100 @@
   renderer.xr.addEventListener("sessionend", function () {
     inVRMode = false;
     controllers.forEach(function (c) { c.visible = false; });
+    if (vrCard) vrCard.visible = false;
+    activeVRHazard = null;
     document.getElementById("crosshair").style.display = "";
     document.getElementById("target-tip").style.display = "";
     document.getElementById("hud").style.display = "";
   });
+
+  // -------------------------------------------------------------------------
+  // In-world hazard board (south wall beside the entrance, visible from spawn)
+  // Mirrors the DOM panel; its SUBMIT plate is raycast-clickable in VR and PC.
+  // -------------------------------------------------------------------------
+  var boardGroup = null, boardCtx = null, boardTex = null, submitCtx = null, submitTex = null;
+
+  function buildBoard() {
+    boardGroup = new THREE.Group();
+
+    var listCanvas = document.createElement("canvas");
+    listCanvas.width = 512; listCanvas.height = 768;
+    boardCtx = listCanvas.getContext("2d");
+    boardTex = new THREE.CanvasTexture(listCanvas);
+    var listMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.85, 1.27),
+      new THREE.MeshBasicMaterial({ map: boardTex, transparent: true })
+    );
+    listMesh.position.set(0, 0.40, 0);
+    boardGroup.add(listMesh);
+
+    var subCanvas = document.createElement("canvas");
+    subCanvas.width = 512; subCanvas.height = 117;
+    submitCtx = subCanvas.getContext("2d");
+    submitTex = new THREE.CanvasTexture(subCanvas);
+    var submitMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.70, 0.16),
+      new THREE.MeshBasicMaterial({ map: submitTex, transparent: true })
+    );
+    submitMesh.position.set(0, -0.35, 0);
+    submitMesh.userData.submit = true;
+    boardGroup.add(submitMesh);
+
+    // Blender (0.50, wall face y≈0.055, z 1.5) → Three (0.50, 1.5, -0.058)
+    boardGroup.position.set(0.50, 1.50, -0.058);
+    boardGroup.rotation.y = Math.PI; // face north, into the room
+    scene.add(boardGroup);
+    renderHazardBoard();
+  }
+
+  function renderHazardBoard() {
+    if (!boardCtx) return;
+    var ctx = boardCtx;
+    ctx.clearRect(0, 0, 512, 768);
+    ctx.fillStyle = "rgba(18,20,24,0.92)";
+    roundRect(ctx, 2, 2, 508, 764, 16);
+    ctx.fill();
+    ctx.strokeStyle = "#3a3e46"; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = "#9bd6a4";
+    ctx.font = "700 30px system-ui, sans-serif";
+    ctx.fillText("HAZARD HUNT", 28, 52);
+
+    var y = 100;
+    for (var i = 0; i < HAZARDS.length; i++) {
+      var h = HAZARDS[i];
+      var icon, color, label;
+      if (h.fixed)          { icon = "✓"; color = "#9bd6a4"; label = h.title; }
+      else if (h.found)     { icon = "•"; color = "#d8eed9"; label = h.title; }
+      else if (completed)   { icon = "!"; color = "#ef6b6b"; label = h.title; }
+      else                  { icon = "?"; color = "#7a7e85"; label = "Hazard #" + h.id + " — find it"; }
+      ctx.fillStyle = color;
+      ctx.font = "700 26px system-ui, sans-serif";
+      ctx.fillText(icon, 28, y);
+      ctx.font = "22px system-ui, sans-serif";
+      wrapText(ctx, label, 64, y, 420, 26, 2);
+      y += 82;
+    }
+
+    ctx.fillStyle = "#7a7e85";
+    ctx.font = "22px system-ui, sans-serif";
+    ctx.fillText(fixedCount + " fixed · " + foundCount + " flagged · " + wrongClicks + " wrong", 28, 740);
+    boardTex.needsUpdate = true;
+
+    // Submit plate
+    var s = submitCtx;
+    s.clearRect(0, 0, 512, 117);
+    s.fillStyle = completed ? "#3a3e46" : "#9bd6a4";
+    roundRect(s, 2, 2, 508, 113, 14);
+    s.fill();
+    s.fillStyle = completed ? "#9ea3aa" : "#0b0c0f";
+    s.font = "700 36px system-ui, sans-serif";
+    s.textAlign = "center";
+    s.fillText(completed ? "COMPLETE" : "I'M DONE — SUBMIT", 256, 72);
+    s.textAlign = "left";
+    submitTex.needsUpdate = true;
+  }
+  buildBoard();
 
   // -------------------------------------------------------------------------
   // Hazard list panel
@@ -726,11 +1027,13 @@
       li.appendChild(box); li.appendChild(label);
       hazList.appendChild(li);
     });
+    renderHazardBoard();
   }
   function updateProgressUI() {
     hpFixed.textContent = fixedCount;
     hpFound.textContent = foundCount;
     hpWrong.textContent = wrongClicks;
+    renderHazardBoard();
   }
 
   // -------------------------------------------------------------------------
@@ -787,9 +1090,9 @@
     var now = performance.now();
     updateTweens(now);
 
-    if (inVRMode) {
+    if (renderer.xr.isPresenting) {
+      updateThumbsticks(dt);
       updateVRTargeting();
-      // Room HUD doesn't render in VR but keep state in sync if needed later
     } else if (overlay.style.display === "none" && !modalOpen()) {
       var fwd = 0, side = 0;
       if (keys.w) fwd += 1;
