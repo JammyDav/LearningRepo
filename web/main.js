@@ -86,12 +86,12 @@
       why: "Needles in general waste cause needlestick injuries to anyone handling the bag — cleaners, FM staff, waste contractors. Sharps must go into a yellow rigid sharps-only bin and be reported as a near-miss.",
       fix: "Sharps moved to the yellow sharps-only bin and reported as a near-miss.",
       runFix: function (root) {
-        // Sharps bin sits 0.42 m south (Blender -Y) of the general bin → Three.js +Z
+        // Sharps bin sits 0.6 m east (Blender +X = Three.js +X) of the general bin
         ["HAZARD_06_sharps_barrel_1",
          "HAZARD_06_sharps_needle_1",
          "HAZARD_06_sharps_barrel_2",
          "HAZARD_06_sharps_barrel_3"].forEach(function (n) {
-          moveBy(root, n, "z", 0.42, 800, function () {
+          moveBy(root, n, "x", 0.6, 800, function () {
             var o = root.getObjectByName(n); if (o) o.visible = false;
           });
         });

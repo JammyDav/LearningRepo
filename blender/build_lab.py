@@ -906,19 +906,22 @@ def build_hazard_05_gas_cylinder(coll):
     add_box("ctx_cylinder_secured_link", sx+0.14, sy-0.02, 1.02, MAIN[2]-WALL_THICK/2-0.02, sy+0.02, 1.06, valve, coll)
 
 def build_hazard_06_sharps_in_bin(coll):
-    bin_cx, bin_cy = PREP[0] + 0.55, PREP[1] + 0.65
+    # Bins sit side by side against the north wall, under the window bank
+    # (prep-room corner was too crowded with coats/lockers/doorway)
+    bin_cx, bin_cy = 4.4, 5.55
     bin_body = mat("h_bin"); pedal = mat("trim")
 
     add_cylinder("HAZARD_06_general_bin", bin_cx, bin_cy, 0.0, 0.22, 0.55, bin_body, segments=18, coll=coll)
     # Round lid sitting ajar (half off) so the sharps inside are exposed
     lid = add_cylinder("HAZARD_06_general_bin_lid", bin_cx+0.14, bin_cy, 0.55, 0.225, 0.025, pedal, segments=18, coll=coll)
     lid.rotation_euler = (0, math.radians(-8), 0)
-    add_box("HAZARD_06_general_bin_pedal", bin_cx-0.10, bin_cy+0.22, 0.0, bin_cx+0.10, bin_cy+0.32, 0.04, pedal, coll, bevel=0.004)
+    # Pedal + labels face SOUTH (-y) into the room
+    add_box("HAZARD_06_general_bin_pedal", bin_cx-0.10, bin_cy-0.32, 0.0, bin_cx+0.10, bin_cy-0.22, 0.04, pedal, coll, bevel=0.004)
     add_box("HAZARD_06_general_bin_label_panel",
-            bin_cx-0.16, bin_cy+0.218, 0.20, bin_cx+0.16, bin_cy+0.225, 0.42, mat("label_white"), coll)
-    add_text("HAZARD_06_general_bin_label", "GENERAL", bin_cx, bin_cy+0.232, 0.34, facing="+y", size=0.040,
+            bin_cx-0.16, bin_cy-0.225, 0.20, bin_cx+0.16, bin_cy-0.218, 0.42, mat("label_white"), coll)
+    add_text("HAZARD_06_general_bin_label", "GENERAL", bin_cx, bin_cy-0.232, 0.34, facing="-y", size=0.040,
              material=mat("label_dark"), coll=coll)
-    add_text("HAZARD_06_general_bin_label_2", "WASTE", bin_cx, bin_cy+0.232, 0.27, facing="+y", size=0.040,
+    add_text("HAZARD_06_general_bin_label_2", "WASTE", bin_cx, bin_cy-0.232, 0.27, facing="-y", size=0.040,
              material=mat("label_dark"), coll=coll)
     # Sharps poking out
     sx1, sy1 = bin_cx-0.05, bin_cy-0.03
@@ -929,16 +932,15 @@ def build_hazard_06_sharps_in_bin(coll):
     sx3, sy3 = bin_cx-0.02, bin_cy+0.10
     add_cylinder("HAZARD_06_sharps_barrel_3", sx3, sy3, 0.51, 0.013, 0.09, mat("h_ppe"), segments=10, coll=coll)
 
-    # Correct yellow sharps bin — beside the general bin against the shared wall
-    # (previously at bin_cy+0.75, which blocked the internal doorway)
-    sb_x, sb_y = bin_cx, bin_cy - 0.42
+    # Correct yellow sharps bin — to the right of the general bin, same wall
+    sb_x, sb_y = bin_cx + 0.60, bin_cy
     add_cylinder("ctx_sharps_bin_correct", sb_x, sb_y, 0.0, 0.18, 0.45, mat("h_bottle"), segments=18, coll=coll)
     add_cylinder("ctx_sharps_bin_correct_lid", sb_x, sb_y, 0.45, 0.18, 0.06, mat("trim"), segments=18, coll=coll)
     add_box("ctx_sharps_bin_correct_label_panel",
-            sb_x-0.14, sb_y+0.176, 0.18, sb_x+0.14, sb_y+0.183, 0.38, mat("label_red"), coll)
-    add_text("ctx_sharps_bin_correct_label", "SHARPS", sb_x, sb_y+0.190, 0.32, facing="+y", size=0.038,
+            sb_x-0.14, sb_y-0.183, 0.18, sb_x+0.14, sb_y-0.176, 0.38, mat("label_red"), coll)
+    add_text("ctx_sharps_bin_correct_label", "SHARPS", sb_x, sb_y-0.190, 0.32, facing="-y", size=0.038,
              material=mat("label_white"), coll=coll)
-    add_text("ctx_sharps_bin_correct_label_2", "ONLY", sb_x, sb_y+0.190, 0.25, facing="+y", size=0.038,
+    add_text("ctx_sharps_bin_correct_label_2", "ONLY", sb_x, sb_y-0.190, 0.25, facing="-y", size=0.038,
              material=mat("label_white"), coll=coll)
 
 def build_hazard_07_ppe_failure(coll):

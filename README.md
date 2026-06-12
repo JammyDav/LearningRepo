@@ -39,5 +39,5 @@ names (`HAZARD_NN_*`) are contract API for `web/main.js` — do not rename them.
 3. Unlabelled chemical bottle (main lab)
 4. Extension lead across walkway (main lab)
 5. Compressed gas cylinder unsecured (main lab)
-6. Sharps in general waste (prep room)
+6. Sharps in general waste (main lab, bins under the window)
 7. Lab coat sharing a hook with street clothing (prep room)
